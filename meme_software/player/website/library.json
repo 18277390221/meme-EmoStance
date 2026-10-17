@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "description": "播放器演示素材库；不用于证明情绪识别效果",
+  "items": [
+    {
+      "id": "meme-0157",
+      "label": "挥爪打招呼",
+      "visual_type": "video",
+      "visual": "meme-0157/video.mp4",
+      "poster": "meme-0157/preview.png",
+      "audio": "meme-0157/audio.wav",
+      "duration_seconds": 4.33,
+      "original_name": "舞爪花猫（有声）",
+      "audio_reviewed": false,
+      "annotation_status": "手动演示候选；画面用途初稿，声音未试听",
+      "source_repo": "xlllln/meow-meme-studio",
+      "source_url": "https://raw.githubusercontent.com/xlllln/meow-meme-studio/4977f7e7c1ebe0f6cd232e0bc4496ae66c0e7fa2/dist/assets/library/cats/cat-157.mp4",
+      "license_status": "未确认素材训练授权"
+    },
+    {
+      "id": "meme-0160",
+      "label": "亲近陪伴",
+      "visual_type": "video",
+      "visual": "meme-0160/video.mp4",
+      "poster": "meme-0160/preview.png",
+      "audio": "meme-0160/audio.wav",
+      "duration_seconds": 8.55,
+      "original_name": "要抱抱",
+      "audio_reviewed": false,
+      "annotation_status": "手动演示候选；画面用途初稿，声音未试听",
+      "source_repo": "xlllln/meow-meme-studio",
+      "source_url": "https://raw.githubusercontent.com/xlllln/meow-meme-studio/4977f7e7c1ebe0f6cd232e0bc4496ae66c0e7fa2/dist/assets/library/cats/cat-160.mp4",
+      "license_status": "未确认素材训练授权"
+    },
+    {
+      "id": "meme-0187",
+      "label": "开心庆祝",
+      "visual_type": "video",
+      "visual": "meme-0187/video-display.mp4",
+      "poster": "meme-0187/preview-display.png",
+      "audio": "meme-0187/audio.wav",
+      "duration_seconds": 7.41,
+      "original_name": "兴奋",
+      "audio_reviewed": false,
+      "annotation_status": "手动演示候选；画面用途初稿，声音未试听",
+      "source_repo": "Stickic-cyber/AICatMeme",
+      "source_url": "https://raw.githubusercontent.com/Stickic-cyber/AICatMeme/49e4133d6855dd1aa3ab553610307998ff828551/meme/%E5%85%B4%E5%A5%8B.mp4",
+      "license_status": "未确认素材训练授权",
+      "display_processing": "去除绿幕并合成深绿色背景，原片与配套WAV保留"
+    },
+    {
+      "id": "meme-0189",
+      "label": "努力加油",
+      "visual_type": "video",
+      "visual": "meme-0189/video-display.mp4",
+      "poster": "meme-0189/preview-display.png",
+      "audio": "meme-0189/audio.wav",
+      "duration_seconds": 4.34,
+      "original_name": "努力",
+      "audio_reviewed": false,
+      "annotation_status": "手动演示候选；画面用途初稿，声音未试听",
+      "source_repo": "Stickic-cyber/AICatMeme",
+      "source_url": "https://raw.githubusercontent.com/Stickic-cyber/AICatMeme/49e4133d6855dd1aa3ab553610307998ff828551/meme/%E5%8A%AA%E5%8A%9B.mp4",
+      "license_status": "未确认素材训练授权",
+      "display_processing": "去除绿幕并合成深绿色背景，原片与配套WAV保留"
+    },
+    {
+      "id": "meme-0135",
+      "label": "安静倾听",
+      "visual_type": "video",
+      "visual": "meme-0135/video.mp4",
+      "poster": "meme-0135/preview.png",
+      "audio": "meme-0135/audio.wav",
+      "duration_seconds": 8.29,
+      "original_name": "橘猫凝视橘猫（有声）",
+      "audio_reviewed": false,
+      "annotation_status": "手动演示候选；画面用途初稿，声音未试听",
+      "source_repo": "xlllln/meow-meme-studio",
+      "source_url": "https://raw.githubusercontent.com/xlllln/meow-meme-studio/4977f7e7c1ebe0f6cd232e0bc4496ae66c0e7fa2/dist/assets/library/cats/cat-135.mp4",
+      "license_status": "未确认素材训练授权"
+    },
+    {
+      "id": "meme-0136",
+      "label": "打哈欠休息",
+      "visual_type": "video",
+      "visual": "meme-0136/video.mp4",
+      "poster": "meme-0136/preview.png",
+      "audio": "meme-0136/audio.wav",
+      "duration_seconds": 5.92,
+      "original_name": "橘猫打哈欠（有声）",
+      "audio_reviewed": false,
+      "annotation_status": "手动演示候选；画面用途初稿，声音未试听",
+      "source_repo": "xlllln/meow-meme-studio",
+      "source_url": "https://raw.githubusercontent.com/xlllln/meow-meme-studio/4977f7e7c1ebe0f6cd232e0bc4496ae66c0e7fa2/dist/assets/library/cats/cat-136.mp4",
+      "license_status": "未确认素材训练授权"
+    },
+    {
+      "id": "meme-0143",
+      "label": "有点疑惑",
+      "visual_type": "video",
+      "visual": "meme-0143/video.mp4",
+      "poster": "meme-0143/preview.png",
+      "audio": "meme-0143/audio.wav",
+      "duration_seconds": 7.08,
+      "original_name": "目瞪口呆猫（有声）",
+      "audio_reviewed": false,
+      "annotation_status": "手动演示候选；画面用途初稿，声音未试听",
+      "source_repo": "xlllln/meow-meme-studio",
+      "source_url": "https://raw.githubusercontent.com/xlllln/meow-meme-studio/4977f7e7c1ebe0f6cd232e0bc4496ae66c0e7fa2/dist/assets/library/cats/cat-143.mp4",
+      "license_status": "未确认素材训练授权"
+    },
+    {
+      "id": "meme-0215",
+      "label": "再说一次",
+      "visual_type": "video",
+      "visual": "meme-0215/video.mp4",
+      "poster": "meme-0215/preview.png",
+      "audio": "meme-0215/audio.wav",
+      "duration_seconds": 7.17,
+      "original_name": "震惊",
+      "audio_reviewed": false,
+      "annotation_status": "手动演示候选；画面用途初稿，声音未试听",
+      "source_repo": "Stickic-cyber/AICatMeme",
+      "source_url": "https://raw.githubusercontent.com/Stickic-cyber/AICatMeme/49e4133d6855dd1aa3ab553610307998ff828551/meme/%E9%9C%87%E6%83%8A.mp4",
+      "license_status": "未确认素材训练授权"
+    }
+  ],
+  "scenarios": [
+    {
+      "label": "你好呀",
+      "subtitle": "打个招呼",
+      "icon": "👋",
+      "meme_id": "meme-0157",
+      "reply_text": "你好呀，今天想聊些什么？"
+    },
+    {
+      "label": "今天很开心",
+      "subtitle": "一起庆祝",
+      "icon": "✨",
+      "meme_id": "meme-0187",
+      "reply_text": "听起来有好事发生！愿意和我分享吗？"
+    },
+    {
+      "label": "有点累了",
+      "subtitle": "歇一会儿",
+      "icon": "☁",
+      "meme_id": "meme-0160",
+      "reply_text": "今天辛苦了，我陪你歇一会儿。"
+    },
+    {
+      "label": "给我加个油",
+      "subtitle": "慢慢来就好",
+      "icon": "🌱",
+      "meme_id": "meme-0189",
+      "reply_text": "先做一小步也很好，我给你加油。"
+    },
+    {
+      "label": "想说点什么",
+      "subtitle": "小猫在听",
+      "icon": "💬",
+      "meme_id": "meme-0135",
+      "reply_text": "我在听，你可以慢慢说。"
+    },
+    {
+      "label": "准备睡觉了",
+      "subtitle": "今天到这里",
+      "icon": "☾",
+      "meme_id": "meme-0136",
+      "reply_text": "今天就到这里吧，祝你睡个好觉。"
+    }
+  ]
+}

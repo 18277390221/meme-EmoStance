@@ -1,0 +1,32 @@
+{
+  "assets": 211,
+  "decoded_frames": 10117,
+  "all_wav_valid": true,
+  "removed_ids_absent": true,
+  "host": "Windows AMD64",
+  "pi_display_tested": false,
+  "native_window_tested_on_windows": true,
+  "api_response_drives_native_picture_and_subtitle": true,
+  "api_idempotency_invalid_id_stop_checked": true,
+  "management_window_visually_checked": true,
+  "library_sha_unchanged": "0711db35917f59ea5e81bd1e723f2c44afe984ed4f178e7c4b92dbcae12b0f2c",
+  "target": "Raspberry Pi4B / Debian12 ARM64 / CPython3.11",
+  "target_dependency_report": {
+    "python3-tk": "3.11.2-3",
+    "python3-pil": "9.4.0-1.1+deb12u1",
+    "python3-pil.imagetk": "9.4.0-1.1+deb12u1",
+    "alsa-utils": "already installed"
+  },
+  "new_python_or_system_dependencies_required_for_reported_target": false,
+  "pi_audio_tested": false,
+  "pi_touch_tested": false,
+  "pi_frame_rate_tested": false,
+  "auto_start_installed": false,
+  "default_opens_browser_or_webview": false,
+  "limitations": [
+    "视频/非WAV导入先转换；现有211套GIF/WAV全部支持",
+    "不含ASR到服务器算法联调；现有/api/response可驱动界面",
+    "需要在实际Linux桌面运行，SSH会话不等于桌面会话"
+  ],
+  "default_api_port": 8784
+}
