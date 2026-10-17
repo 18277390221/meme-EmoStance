@@ -7,7 +7,7 @@
 | `dataset/` | 存放数据集。 |
 | `data_spilt/` | 存放划分好的数据集，例如训练集、验证集和测试集。 |
 | `meme_software/` | 存放在树莓派上运行的播放软件。 |
-| `sucai_meme/` | 存放 meme 猫的素材。 |
+| `sucai_meme/meme_gif/` | 存放 meme 猫的 GIF 素材。 |
 | `sucai_meme/meme_music/` | 存放 meme 猫的音乐。 |
 | `model/` | 存放通过 EmoStance 训练好的模型。 |
 
