@@ -20,6 +20,7 @@ import uuid
 from stt_bridge import SpeechProcess, find_asr_root
 from server_link import ServerLink
 from render_pipeline import RenderEngine
+from conversation_turn import ConversationTurn
 
 
 def speech_defaults():
@@ -38,9 +39,14 @@ def main():
     parser.add_argument('--check', action='store_true', help='检查依赖和数据，不打开窗口')
     parser.add_argument('--no-stt', action='store_true', help='只播放表情，不启动收音/服务器通信')
     parser.add_argument('--stt-root', type=Path, help='明确选择已有离线ASR安装目录')
+    parser.add_argument('--meme-dir', type=Path, help='sucai_meme/meme_gif本地目录；按文件名前缀映射编号')
+    parser.add_argument('--end-silence', type=float, default=1.2, help='停顿多少秒提交整句，0.5到5，默认1.2')
+    parser.add_argument('--legacy-library', action='store_true', help='明确选择旧SQLite素材，仅用于回退对照')
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error('端口必须在1到65535之间')
+    if not math.isfinite(args.end_silence) or not .5 <= args.end_silence <= 5:
+        parser.error('--end-silence需要在0.5到5秒之间')
     try:
         import tkinter as tk
         from tkinter import ttk, messagebox, filedialog, simpledialog
@@ -48,14 +54,23 @@ def main():
         from native_core import Audio, check_library, read_asset, validate_wav
         sys.path.insert(0, str(args.root.resolve()))
         from launch import Player, Handler
-        count = check_library(args.root)
+        if args.legacy_library and args.meme_dir:
+            raise ValueError('--legacy-library不能与--meme-dir同时使用')
+        if args.legacy_library:
+            count = check_library(args.root)
+            player = Player(args.root)
+            meme_directory = None
+        else:
+            from directory_library import DirectoryPlayer, find_directory
+            meme_directory = find_directory(args.root, args.meme_dir)
+            player = DirectoryPlayer(args.root, meme_directory)
+            count = len(player.assets())
         if args.check:
             print(json.dumps({'assets': count, 'tk': tk.TkVersion, 'pillow': Image.__version__,
                               'aplay': bool(shutil.which('aplay')), 'api_port': args.port,
-                              'browser_required': False},
+                              'browser_required': False, 'meme_directory': str(meme_directory) if meme_directory else None},
                              ensure_ascii=False))
             return 0
-        player = Player(args.root)
         window = tk.Tk()
     except Exception as error:
         print('桌面播放器无法启动：' + str(error), file=sys.stderr)
@@ -96,7 +111,13 @@ def main():
             self.server = None
             self.manager = None
             self.link = ServerLink()
-            self.speech = SpeechProcess(on_final=self.link.submit)
+            self.speech = SpeechProcess()
+            self.turn = ConversationTurn(self.link.submit, self.speech.pause, self.speech.resume)
+            self.speech.on_final = self.turn.submit_final
+            original_respond = player.respond
+            player.respond = lambda body: self.turn.respond(body, original_respond, player.requests)
+            self.ready_media = None
+            self.visual_done = False
             self.speech_state = 'paused'
             self.net_state = 'closed'
             self.notice = '语音未开启'
@@ -171,19 +192,29 @@ def main():
                 root = find_asr_root(args.root, self.settings['asr_root'])
                 if not self.link.thread or not self.link.thread.is_alive():
                     self.link.start(self.settings['host'], self.settings['port'], self.settings['token_file'])
-                self.speech.start(root, self.settings['device'])
+                self.speech.start(root, self.settings['device'], paused=True, end_silence=args.end_silence)
+                self.turn.enable()
                 self.speech_state = 'loading'
                 self.notice = '正在加载本地中文识别，请稍候。'
             except (ValueError, OSError) as error:
+                self.turn.disable()
                 self.speech_state = 'error'
                 self.notice = str(error)
                 self.speech_error = str(error)
 
         def draw_listening(self):
-            active = (self.speech_state == 'listening' and self.speech.running() and
+            active = (self.turn.phase in ('listening', 'playing') and self.speech_state == 'listening' and self.speech.running() and
                       time.monotonic() - self.speech.last_activity < 1.5)
-            if active:
+            if self.turn.phase in ('waiting', 'preparing'):
+                label = {'waiting':'等待回复', 'preparing':'准备回复',
+                         'playing':'正在回复', 'cooldown':'准备聆听'}[self.turn.phase]
+                if self.turn.phase == 'preparing' and self.turn.media_active:
+                    label = '回复待播放'
+                color = '#8fc9ff'
+            elif active:
                 label = '正在听' if self.link.connected else '正在听 · 未连接'
+                if self.turn.phase == 'playing':
+                    label = '边播边听' if self.link.connected else '边播边听 · 未连接'
                 color = '#74e2b8' if self.link.connected else '#ffcc78'
                 if self.link.connected and time.monotonic() - self.sent_at < 1:
                     label, color = '发送中', '#8fc9ff'
@@ -216,20 +247,25 @@ def main():
         def poll_voice(self):
             for event in self.speech.drain():
                 kind = event['type']
-                if kind in ('loading', 'listening'):
+                if kind in ('loading', 'listening', 'paused'):
                     self.speech_state = kind
-                    self.notice = '正在收音，完整句子将发给服务器。' if kind == 'listening' else '正在加载本地中文模型。'
+                    if kind == 'listening':
+                        self.notice = '正在听，说完后停顿约%s秒再发送。' % args.end_silence
+                    elif kind == 'loading':
+                        self.notice = '正在加载本地中文模型。'
                 elif kind == 'final':
                     if event.get('request_id'):
                         self.sent_at = time.monotonic()
                         self.notice = '识别完成，正在发送文字。'
                 elif kind == 'error':
+                    self.turn.disable()
                     self.speech_state = 'error'
                     self.notice = event.get('message', '收音异常')
                     self.speech_error = self.notice
                 elif kind == 'stats':
                     self.stats = event.get('data', {})
                 elif kind == 'exited' and self.speech_state != 'error':
+                    self.turn.disable()
                     self.speech_state = 'paused'
                     self.notice = '收音已停止，麦克风已释放。'
             for event in self.link.drain():
@@ -243,13 +279,17 @@ def main():
                         # Only local paired media can be selected. Server text
                         # is never interpreted as a path, command or audio URL.
                         if event['meme_id'] not in {row['id'] for row in player.assets()}:
-                            raise ValueError('服务器返回的表情编号未导入本机：' + event['meme_id'])
+                            raise ValueError('服务器返回的表情编号不在当前素材来源中或已剔除：' + event['meme_id'])
                         player.respond({'meme_id': event['meme_id'], 'reply_text': event['reply_text'],
                                         'request_id': 'server-' + event['id']})
-                        self.notice = '已收到小猫回复，正在播放本地表情与配套声音。'
+                        self.notice = ('已收到新回复，等当前表情与声音完整播完再播放。' if self.turn.media_active
+                                       else '已收到小猫回复，正在准备本地表情与配套声音。')
                     except (ValueError, sqlite3.Error) as error:
                         self.net_state = 'reply_error'
                         self.notice = str(error)
+                        self.turn.failure()
+                elif event['type'] in ('ack', 'unsent', 'unconfirmed', 'server_error', 'auth_error', 'reply_error', 'closed'):
+                    self.turn.failure()
             if self.restarting and self.io_done.is_set():
                 self.restarting = False
                 if self.next_settings:
@@ -268,6 +308,7 @@ def main():
         def stop_voice(self, restart=None):
             if self.restarting:
                 return
+            self.turn.disable()
             self.restarting = True
             self.next_settings = restart
             self.speech_state = 'stopping'
@@ -410,6 +451,9 @@ def main():
                 self.renderer.cancel()
                 self.render_generation = self.renderer.generation
                 self.pending_event = None
+                self.ready_media = None
+                self.turn.media_cancelled()
+            self.visual_done = False
             self.playing = False
             self.audio.stop()
 
@@ -419,7 +463,11 @@ def main():
             self.render_generation = self.renderer.request(event, self.render_size())
 
         def poll_render(self):
-            for item in self.renderer.take():
+            events = self.renderer.take()
+            if self.ready_media is not None:
+                events.insert(0, self.ready_media)
+                self.ready_media = None
+            for item in events:
                 if item['generation'] != self.render_generation:
                     continue
                 kind = item['type']
@@ -439,6 +487,8 @@ def main():
                         self.started = time.monotonic()
                         self.deadline = self.started + item['duration']
                         self.playing = True
+                        self.visual_done = False
+                        self.turn.media_started()
                         if self.quiet_intro:
                             self.quiet_intro = False
                         else:
@@ -453,8 +503,7 @@ def main():
                         self.frame, self.frame_key = item['image'], (item['cache_key'], item['index'])
                         self.draw()
                 elif kind == 'finished':
-                    self.playing = False
-                    self.audio.stop()
+                    self.visual_done = True
                     self.render_stats.update({k: item[k] for k in ('cache_hits', 'cache_misses', 'cache_bytes')})
                     mean = sum(self.draw_ms) / max(1, len(self.draw_ms))
                     self.render_summary = '画面提交 %s 帧 / 界面处理均值 %.1fms（非屏幕实测刷新率）' % (self.drawn_frames, mean)
@@ -462,6 +511,11 @@ def main():
                     self.stop()
                     self.notice = item['message']
                     self.render_summary = item['message']
+            if self.visual_done and not self.audio.is_playing():
+                self.visual_done = False
+                self.playing = False
+                self.audio.stop()
+                self.turn.media_finished()
 
         def poll(self):
             if self.closed:
@@ -470,12 +524,14 @@ def main():
             with player.lock:
                 event = player.event.copy()
             if event['revision'] != self.last_revision:
-                self.last_revision = event['revision']
-                if event['type'] == 'response':
+                if event['type'] == 'response' and self.turn.can_start_media():
+                    self.last_revision = event['revision']
                     self.play(event)
                 elif event['type'] == 'stop':
+                    self.last_revision = event['revision']
                     self.stop()
             self.poll_render()
+            self.turn.tick()
             for error in self.audio.pop_errors():
                 messagebox.showwarning('声音未能播放', error, parent=window)
             window.after(16, self.poll)
@@ -572,6 +628,7 @@ def main():
             if self.closed:
                 return
             self.closed = True
+            self.turn.disable()
             self.stop()
             self.renderer.close()
             if self.server:

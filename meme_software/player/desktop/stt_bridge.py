@@ -44,6 +44,10 @@ class SpeechProcess:
         self.last_activity = 0.0
         self.overflow = False
         self.accepting = True
+        self.command_lock = threading.Lock()
+        self.paused = True
+        self.pause_id = None
+        self.command_serial = 0
 
     def publish(self, event):
         with self.lock:
@@ -68,7 +72,7 @@ class SpeechProcess:
     def running(self):
         return bool(self.thread and self.thread.is_alive())
 
-    def start(self, asr_root, device, python=None, wav=None):
+    def start(self, asr_root, device, python=None, wav=None, paused=False, end_silence=1.2):
         if self.running():
             raise ValueError('已有本软件的收音实例，请先停止。')
         python = Path(python) if python else Path(asr_root) / '.venv/bin/python'
@@ -77,6 +81,11 @@ class SpeechProcess:
         command = [str(python), '-B', '-u', str(self.worker), '--asr-root', str(asr_root), '--device', device]
         if wav:
             command += ['--wav', str(wav)]
+        command += ['--end-silence', str(end_silence)]
+        if paused:
+            command.append('--paused')
+        self.paused = paused
+        self.pause_id = 'initial' if paused else None
         self.accepting = True
         self.overflow = False
         self.last_activity = 0.0
@@ -101,10 +110,16 @@ class SpeechProcess:
                     try:
                         event = json.loads(line)
                         if not isinstance(event, dict) or event.get('type') not in {
-                            'loading', 'listening', 'activity', 'final', 'error', 'stats', 'stopped'}:
+                            'loading', 'listening', 'paused', 'activity', 'final', 'error', 'stats', 'stopped'}:
                             raise ValueError('unknown event')
                         if event['type'] == 'error':
                             failed = True
+                        if event['type'] == 'stopped' or (event['type'] == 'paused' and
+                                self.pause_id is not None and event.get('pause_id') == self.pause_id):
+                            self.paused = True
+                            self.last_activity = 0.0
+                        elif event['type'] == 'listening':
+                            self.paused = False
                         if event['type'] == 'final' and self.on_final:
                             event['request_id'] = self.on_final(event.get('text'))
                         self.publish(event)
@@ -116,6 +131,7 @@ class SpeechProcess:
                 if code and not failed:
                     self.publish({'type': 'error', 'message': '识别进程异常退出，请检查设备或本地依赖。'})
             finally:
+                self.paused = True
                 for pipe in (process.stdout, process.stderr, process.stdin):
                     try:
                         pipe.close()
@@ -126,13 +142,33 @@ class SpeechProcess:
         self.thread.start()
 
     def request_stop(self):
+        self.command('stop')
+
+    def command(self, name):
         process = self.process
         if process and process.poll() is None:
             try:
-                process.stdin.write('stop\n')
-                process.stdin.flush()
+                with self.command_lock:
+                    process.stdin.write(name + '\n')
+                    process.stdin.flush()
             except (OSError, ValueError):
                 pass
+
+    def pause(self):
+        # paused becomes true only after the worker confirms Capture has closed.
+        if self.process and self.process.poll() is None:
+            self.command_serial += 1
+            self.pause_id = str(self.command_serial)
+            self.paused = False
+            self.command('pause ' + self.pause_id)
+        else:
+            self.paused = True
+
+    def resume(self):
+        if self.process and self.process.poll() is None:
+            self.pause_id = None
+            self.paused = False
+            self.command('resume')
 
     def close(self, timeout=8):
         self.request_stop()

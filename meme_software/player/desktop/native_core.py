@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import wave
 
 from PIL import Image
@@ -25,6 +26,8 @@ def check_library(root):
 
 
 def read_asset(player, key):
+    if hasattr(player, 'read_native_asset'):
+        return player.read_native_asset(key)
     with closing(player.connect()) as db:
         row = db.execute('SELECT * FROM assets WHERE id=?', (key,)).fetchone()
     if row is None:
@@ -82,18 +85,20 @@ class Audio:
         self.errors = []
         self.lock = threading.Lock()
         self.scratch = None
+        self.until = 0.0
 
     def play(self, blob):
         self.stop()
         if self.muted or not blob:
             return
-        validate_wav(blob)
+        duration = validate_wav(blob)
         if sys.platform == 'win32':
             import winsound
             self.scratch = tempfile.TemporaryDirectory(prefix='meme-cat-audio-')
             path = Path(self.scratch.name) / 'asset.wav'
             path.write_bytes(blob)
             winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC)
+            self.until = time.monotonic() + duration
             return
         executable = shutil.which('aplay')
         if not executable:
@@ -120,7 +125,13 @@ class Audio:
             errors, self.errors = self.errors, []
         return errors
 
+    def is_playing(self):
+        if self.process is not None:
+            return self.process.poll() is None
+        return time.monotonic() < self.until
+
     def stop(self):
+        self.until = 0.0
         process, self.process = self.process, None
         if process is not None and process.poll() is None:
             try:

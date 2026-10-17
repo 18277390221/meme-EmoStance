@@ -54,12 +54,17 @@ def model_files(folder, profile):
     return {name: str(folder / name) for name in names}
 
 
-def create_recognizer(module, folder, profile, threads):
+def create_recognizer(module, folder, profile, threads, endpoint_silence=None):
     files = model_files(folder, profile)
     options = dict(tokens=files["tokens.txt"], num_threads=threads, sample_rate=16000,
                    feature_dim=80, provider="cpu", enable_endpoint_detection=True,
                    rule1_min_trailing_silence=2.4, rule2_min_trailing_silence=0.8,
                    rule3_min_utterance_length=20, decoding_method="greedy_search")
+    if endpoint_silence is not None:
+        # Player turn-taking: don't force-submit a still-spoken sentence at 20s.
+        options['rule2_min_trailing_silence'] = endpoint_silence
+        options['rule1_min_trailing_silence'] = max(2.4, endpoint_silence)
+        options['rule3_min_utterance_length'] = 1e9
     if profile == "standard":
         return module.OnlineRecognizer.from_transducer(
             encoder=files["encoder.int8.onnx"], decoder=files["decoder.onnx"],

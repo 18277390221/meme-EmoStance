@@ -1,47 +1,49 @@
 # Meme猫软件工作区
 
-Python + Tkinter 原生树莓派桌面程序：本地中文STT最终句 → TCP服务器 → 回复文字和表情编号 → 本地表情、配套WAV和底部字幕。主画面左上角为真实收音/发送/异常状态，不显示用户转写、素材名、时长或计时。
+树莓派Python/Tk原生桌面播放器：麦克风 → 本地中文STT → 服务器收文字 → 返回reply_text/meme_id → 播放本地表情与配套WAV，底部显示回复字幕。主画面不显示用户转写、素材名或时长。
 
-## 关键文件
+**当前语音模型为第一版（V1）：原中文轻量lite＋原ASR静音断句，默认停顿0.5秒。** 详见 [STT_MODEL_VERSION.md](STT_MODEL_VERSION.md)。本项目V1是交付标记，不是新训练模型。
 
-| 路径 | 作用 |
+## 当前交互
+
+播放表情和声音时继续收音，用户说完后才发最终句；新服务器回复先到也等旧GIF及配套声音都完整结束再播。旧播放完成不重置正在说的半句。一次只允许一个待确认请求；等待服务器或回复待播时暂停收音，开始新播放时恢复。动态图标显示“边播边听”。不使用Silero/Smart Turn，不生成语音。
+
+## 关键代码
+
+| 路径 | 用途 |
 | --- | --- |
-| player/desktop/app.py | 原生窗口、素材管理、语音设置与播放协调 |
-| player/desktop/stt_bridge.py、stt_worker.py | 本地识别子进程与最终句IPC |
-| player/desktop/asr_runtime/ | 嵌入的Sherpa识别和连续PCM采集核心 |
-| player/desktop/server_link.py | JSONL TCP认证、文字收发、重连及回复校验 |
-| player/desktop/SERVER_PROTOCOL.md | 服务器reply_text/meme_id接口约定 |
-| player/desktop/render_pipeline.py | 后台GIF解码/缩放、有界缓存和声音时钟调度 |
-| player/desktop/native_core.py | 配套WAV播放及媒体校验 |
-| player/desktop/diagnose_display.py | 只读屏幕驱动/桌面模式诊断 |
-| player/desktop/start.sh | Pi图形桌面启动入口，端口8784 |
-| player/launch.py | 共用SQLite服务和本机HTTP接口 |
+| player/desktop/app.py | 原生界面、收音状态、播放与待播协调 |
+| player/desktop/conversation_turn.py | 对话/媒体状态、整句提交与旧媒体完成屏障 |
+| player/desktop/stt_worker.py、capture_turn.py、stt_bridge.py | 常驻中文lite模型、采集、静音端点及IPC |
+| player/desktop/asr_runtime/ | 离线识别与连续PCM采集核心 |
+| player/desktop/server_link.py、SERVER_PROTOCOL.md | TCP文字及回复编号协议、重连、重复/过期校验 |
+| player/desktop/directory_library.py | 精确按meme编号读取本地GIF及同名WAV |
+| player/desktop/render_pipeline.py、native_core.py | 后台解码、有限缓存、实际配套声音播放 |
+| player/desktop/start.sh | Pi图形桌面启动，端口8784、静音阈值0.5秒 |
+| player/launch.py | 共用存储与本机HTTP接口 |
 
-## 复用现有安装
+## 在已有树莓派环境运行
 
-这是源码，不含SQLite媒体、模型、wheel、venv或通信口令。目标为已检测的Pi4B / Debian12 ARM64 / Python3.11，已装Tk/Pillow/ImageTk/ALSA。STT复用已离线安装的Sherpa1.13.8、NumPy1.26.4及本地lite模型；源码不会在线下载依赖。不要把Windows虚拟环境拷到Pi。
+目标已核对为Pi4B / Debian12 ARM64 / CPython3.11，使用已安装的Tk/Pillow/ImageTk/ALSA。复用已离线安装的Sherpa1.13.8、NumPy1.26.4及中文lite模型；本源码不会在线安装。源码不含模型、媒体、数据库或venv，不能当成全新设备的完整离线安装包。
 
-1. 停止旧播放器后，备份并保留原data，将既有assets.sqlite3副本放到player/data；不要覆盖正在使用的数据库或重新导入已删除素材。
-2. 从已有离线安装选择ASR根目录（含.venv/bin/python和models下的lite模型）。先退出单独运行的ASR，只保留本软件一个收音实例。
-3. 从Pi自身图形桌面终端、在meme_software目录运行：
+1. 保留原player/data及数据库，修改前备份；退出旧播放器和独立ASR，只运行一个收音实例。
+2. 素材默认只读读取仓库 `sucai_meme/meme_gif` 下 `meme-四位编号-名称.gif` 及同名WAV；按完整编号映射，不排序重编号，不回退旧SQLite同编号。未知或已剔除编号不播放，不修改队友素材。
+3. 从Pi自身图形桌面终端，在本meme_software目录运行：
 
 ```sh
-python3 player/desktop/app.py --check
 sh player/desktop/start.sh --stt-root /path/to/existing/offline-asr
 ```
 
-将示例路径换为实际目录。普通SSH会话通常没有DISPLAY，不能据此重装Tk。F11全屏/Esc退全屏，底部按钮退出。
+将路径换为已有ASR根（含.venv/bin/python和lite模型）。F11全屏、Esc退全屏，底部“退出”。依赖检查可用 `python3 player/desktop/app.py --check`。
 
-4. 在“语音”设置填写真实服务器地址、9000端口和已有口令文件路径。**源码的127.0.0.1是占位地址**，实际部署配置保存在被Git忽略的player/data/speech-config.json。speech-config.example.json仅作格式参考。口令从ZT_CHAT_TOKEN环境变量或已有.env读取，不执行.env，不上传口令。
+4. 在“语音”填写真实服务器地址和现有口令文件路径；源码127.0.0.1:9000是占位，原Pi运行配置保持不变。配置保存在被忽略的player/data/speech-config.json，格式见speech-config.example.json。口令只从ZT_CHAT_TOKEN或已有.env读取，不执行.env、不上传凭据。
 
-服务器需启动监听并由算法回调按SERVER_PROTOCOL.md返回一次最终result。返回meme_id必须在实际本机素材库中，reply_text为1～2000字。播放器选本地表情及原配声音，不生成语音；声音内容不保证等于回复文字。普通确认、重复/无关/超时ID不驱动播放。断线时新句不排队，未确认句不自动重发，重连后重说。
+服务器按SERVER_PROTOCOL.md返回同request.id的一次最终result，带reply_text及meme_id（也兼容result.text内JSON字符串）。本地WAV是表情原配声音，不保证读出服务器文字。普通回显不播放，断线句不排队、未确认请求不自动重发。
 
-## 验证与边界
+## 验证与限制
 
-- Windows主机：15项TCP/IPC/回复检查、6项渲染调度/缓存检查、合成服务→原生GUI→底部字幕/配套WAV选择通过，声音检查为静音。现有211套GIF/WAV解码和ID检查通过，媒体不随源码上传。
-- Pi：用户本人执行STT、回复和渲染升级，助手观察到安装器成功及备份；用户报告表情和配套声音工作，但曾普遍卡顿。最新渲染优化尚待Pi重启对照，不能把主机缓存速度当Pi/TFT实测帧率。
-- 图片解码/缩放在后台，画布复用，Pillow/Tk缓存分别最多32MiB；迟到时只跳过旧视觉帧，不丢弃用户收音PCM。许多GIF源约10fps，屏幕实际刷新率仍需核对。
-- 真实服务器算法/情绪匹配、唤醒与声学回声消除尚未完成或验收；场景按钮只是人工演示。扬声器可能回灌麦克风，需现场检查。
-- 只维护本软件工作区，队友communication和其他目录保持原样。修改素材前备份data。
+15项并发/原采集行为检查、真实Windows Tk＋本机TCP两轮检查通过；麦克风和声音时长为模拟。已观察Pi更新器成功，真实Pi新界面、同时收音/播音、服务器回复及回灌仍需现场验证。未实现声学回声消除，不能保证麦克风区分用户与扬声器。
 
-在本目录执行sha256sum -c SHA256SUMS校验本次源码；具体历史检查范围见player/desktop/VALIDATION.json。软件/依赖/模型各许可与来源沿用各项目，媒体与模型未公开上传。
+帧解码/缩放在后台，视觉帧落后可跳过，不丢弃用户收音PCM；主机测试不是Pi/TFT帧率保证。历史检查范围见player/desktop/VALIDATION.json。只维护本meme_software目录，队友文件保持原样。
+
+在本目录执行 `sha256sum -c SHA256SUMS` 校验本次提交文件。已有素材与模型的许可不因代码提交而改变。
