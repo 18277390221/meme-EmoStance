@@ -24,9 +24,66 @@
   "auto_start_installed": false,
   "default_opens_browser_or_webview": false,
   "limitations": [
-    "视频/非WAV导入先转换；现有211套GIF/WAV全部支持",
-    "不含ASR到服务器算法联调；现有/api/response可驱动界面",
-    "需要在实际Linux桌面运行，SSH会话不等于桌面会话"
+    "视频/非WAV导入先转换；现有211套GIF/WAV支持",
+    "已接STT→服务器文字→回复文字/编号→本地播放；真实服务器算法与唤醒尚未验证/接入",
+    "真实服务器算法/收发与Pi音频回灌仍需现场联调",
+    "需Linux桌面；没有声学回声消除，手动播放时避免回灌"
   ],
-  "default_api_port": 8784
+  "default_api_port": 8784,
+  "stt_integration": {
+    "implemented": true,
+    "offline_local_lite_model": true,
+    "sends_final_text_only": true,
+    "server": "Configured locally; public default 127.0.0.1:9000 is a placeholder",
+    "model_response_integrated": true,
+    "main_screen_transcript_shown": false,
+    "listening_indicator_top_left": true,
+    "host_tcp_ipc_tests": 9,
+    "public_wav_real_model_local_tcp_test": true,
+    "pi_microphone_integrated_tested": false,
+    "real_server_connection_tested": false,
+    "gui_current_version_visually_checked": true,
+    "no_default_recording": true,
+    "no_audio_upload": true,
+    "gui_check_scope": "Windows --no-stt --mute: top-left paused icon, settings paths/host/port, unchanged native API, normal exit; not live microphone animation on Pi",
+    "response_scope": "Receives structured reply_text/meme_id; no on-device model or server algorithm claimed"
+  },
+  "server_reply_integration": {
+    "implemented": true,
+    "fields": [
+      "meme_id",
+      "reply_text"
+    ],
+    "audio_source": "existing local paired WAV only",
+    "formats": [
+      "result.text JSON string",
+      "result direct fields"
+    ],
+    "host_protocol_tests_passed": 15,
+    "pi_update_applied": true,
+    "real_server_reply_tested": false,
+    "gui_reply_tested": true,
+    "gui_scope": "Windows native GUI, loopback server, synthetic text, local paired WAV selected by SHA; muted; no Pi microphone/speaker/server test"
+  },
+  "render_optimization": {
+    "implemented": true,
+    "background_decode_and_scale": true,
+    "persistent_canvas": true,
+    "wall_clock_scheduling_no_catchup_burst": true,
+    "pillow_cache_limit_bytes": 33554432,
+    "tk_cache_limit_bytes": 33554432,
+    "host_renderer_tests_passed": 6,
+    "host_benchmark_report": "outputs/player-render-host-performance.json",
+    "pi_updated": true,
+    "pi_actual_fps_tested": false,
+    "source_fps_increase_claimed": false,
+    "gui_checked": "Windows --no-stt --mute: native subtitle and persistent paused indicator visible; 43 frame submissions, mean Tk processing 8.0ms at large host viewport; not Pi/TFT fps"
+  },
+  "deployment_evidence": {
+    "date": "2026-10-17",
+    "pi_updates_confirmed_by_installer_output": true,
+    "display_and_audio_user_reported_working_before_render_update": true,
+    "render_improvement_verified_on_pi": false,
+    "public_configuration_sanitized": true
+  }
 }

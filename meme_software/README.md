@@ -1,44 +1,47 @@
-# Meme猫播放器：软件工作区
+# Meme猫软件工作区
 
-`meme_software/` 是本项目的软件代码贡献工作区。本次提供现有播放器的关键源码；其他团队目录保持原样。
+Python + Tkinter 原生树莓派桌面程序：本地中文STT最终句 → TCP服务器 → 回复文字和表情编号 → 本地表情、配套WAV和底部字幕。主画面左上角为真实收音/发送/异常状态，不显示用户转写、素材名、时长或计时。
 
-## 程序入口
+## 关键文件
 
-使用 **Python + Tkinter 原生桌面窗口** 显示表情、播放配套 WAV，并将回复字幕放在表情画面底部。默认全屏，画面内隐藏素材名称、时长与计时。无需浏览器或 WebView。
-
-| 路径 | 用途 |
+| 路径 | 作用 |
 | --- | --- |
-| `player/desktop/app.py` | 原生窗口、播放控制、素材管理与本机接口 |
-| `player/desktop/native_core.py` | GIF/图片逐帧处理、缩放、ALSA WAV 播放 |
-| `player/desktop/start.sh` | Linux 启动入口，明确使用 **8784** |
-| `player/desktop/install_shortcut.py` | 可选的个人桌面/应用菜单快捷方式 |
-| `player/launch.py` | 复用的 SQLite 素材服务、回复校验及 HTTP Handler |
-| `player/website/library.json` | 原有场景配置与素材来源元数据，非媒体文件 |
-| `player/data/README.md` | 现有素材数据库的放置说明 |
-| `API.md` | 算法/服务器联调接口与当前边界 |
+| player/desktop/app.py | 原生窗口、素材管理、语音设置与播放协调 |
+| player/desktop/stt_bridge.py、stt_worker.py | 本地识别子进程与最终句IPC |
+| player/desktop/asr_runtime/ | 嵌入的Sherpa识别和连续PCM采集核心 |
+| player/desktop/server_link.py | JSONL TCP认证、文字收发、重连及回复校验 |
+| player/desktop/SERVER_PROTOCOL.md | 服务器reply_text/meme_id接口约定 |
+| player/desktop/render_pipeline.py | 后台GIF解码/缩放、有界缓存和声音时钟调度 |
+| player/desktop/native_core.py | 配套WAV播放及媒体校验 |
+| player/desktop/diagnose_display.py | 只读屏幕驱动/桌面模式诊断 |
+| player/desktop/start.sh | Pi图形桌面启动入口，端口8784 |
+| player/launch.py | 共用SQLite服务和本机HTTP接口 |
 
-## 在树莓派使用
+## 复用现有安装
 
-这是**源码提交，不是含素材和依赖的完整离线安装包**。需要已经安装 Python 3、Tkinter、Pillow（含 ImageTk）及 ALSA 的 `aplay`。已获取的目标机报告为树莓派 4B / Debian 12 ARM64 / Python 3.11，报告中这些依赖均已存在；不能由此推断其他电脑也已安装。
+这是源码，不含SQLite媒体、模型、wheel、venv或通信口令。目标为已检测的Pi4B / Debian12 ARM64 / Python3.11，已装Tk/Pillow/ImageTk/ALSA。STT复用已离线安装的Sherpa1.13.8、NumPy1.26.4及本地lite模型；源码不会在线下载依赖。不要把Windows虚拟环境拷到Pi。
 
-1. 在现有播放器停止后，备份并保留它的 `data/assets.sqlite3`，将其副本放到本目录 `player/data/assets.sqlite3`。数据库包含现有配对媒体；本次不上传数据库、音频、视频或模型。不要用空库覆盖原库，也不要重新导入已剔除的素材。
-2. 在树莓派 Linux 桌面的终端进入 `meme_software`，执行：
+1. 停止旧播放器后，备份并保留原data，将既有assets.sqlite3副本放到player/data；不要覆盖正在使用的数据库或重新导入已删除素材。
+2. 从已有离线安装选择ASR根目录（含.venv/bin/python和models下的lite模型）。先退出单独运行的ASR，只保留本软件一个收音实例。
+3. 从Pi自身图形桌面终端、在meme_software目录运行：
 
 ```sh
 python3 player/desktop/app.py --check
-sh player/desktop/start.sh
+sh player/desktop/start.sh --stt-root /path/to/existing/offline-asr
 ```
 
-相对路径以脚本位置定位。`--check` 不创建窗口；完整启动需要实际桌面会话，普通 SSH 会话不等于已进入屏幕桌面。
+将示例路径换为实际目录。普通SSH会话通常没有DISPLAY，不能据此重装Tk。F11全屏/Esc退全屏，底部按钮退出。
 
-F11 切换全屏，Esc 退出全屏；底部按钮可选择表情、重播、管理或退出。界面里的场景按钮是人工演示，不代表已接入真实情绪识别或论文模型。
+4. 在“语音”设置填写真实服务器地址、9000端口和已有口令文件路径。**源码的127.0.0.1是占位地址**，实际部署配置保存在被Git忽略的player/data/speech-config.json。speech-config.example.json仅作格式参考。口令从ZT_CHAT_TOKEN环境变量或已有.env读取，不执行.env，不上传口令。
 
-## 当前边界与验证
+服务器需启动监听并由算法回调按SERVER_PROTOCOL.md返回一次最终result。返回meme_id必须在实际本机素材库中，reply_text为1～2000字。播放器选本地表情及原配声音，不生成语音；声音内容不保证等于回复文字。普通确认、重复/无关/超时ID不驱动播放。断线时新句不排队，未确认句不自动重发，重连后重说。
 
-- 本次未接入收音识别、远程服务器或情绪算法；预留的本机回复接口见 `API.md`。离线 STT 模块独立维护，本次未上传。
-- 原生管理支持 GIF/PNG/JPEG/WebP 配未压缩 WAV；视频或其他音频格式需要先转换。旧 `launch.py` 为共用后端源码，保留了历史网页入口，但本次未提交网页界面/媒体；请用 `desktop/start.sh` 启动原生软件。
-- 现有 Windows 原生窗口、接口驱动画面及底部字幕已检查；211 套 GIF 共 10,117 帧及 WAV 格式已在主机验证。历史验证记录见 `player/desktop/VALIDATION.json`，相应媒体未随本次代码提交。
-- 树莓派原生窗口、扬声器、触摸、实际帧率及 8784 运行仍需现场验收，不能将主机结果视为树莓派实测。
-- 修改/导入素材前备份 `data`；管理窗口导入会自动备份数据库并生成新编号。不要操作其他队友的目录。
+## 验证与边界
 
-校验本次源码：在本目录执行 `sha256sum -c SHA256SUMS`。Python、Tk、Pillow、ALSA 的许可由各自项目维护；本次不新增第三方依赖文件，也不对媒体授权作承诺。
+- Windows主机：15项TCP/IPC/回复检查、6项渲染调度/缓存检查、合成服务→原生GUI→底部字幕/配套WAV选择通过，声音检查为静音。现有211套GIF/WAV解码和ID检查通过，媒体不随源码上传。
+- Pi：用户本人执行STT、回复和渲染升级，助手观察到安装器成功及备份；用户报告表情和配套声音工作，但曾普遍卡顿。最新渲染优化尚待Pi重启对照，不能把主机缓存速度当Pi/TFT实测帧率。
+- 图片解码/缩放在后台，画布复用，Pillow/Tk缓存分别最多32MiB；迟到时只跳过旧视觉帧，不丢弃用户收音PCM。许多GIF源约10fps，屏幕实际刷新率仍需核对。
+- 真实服务器算法/情绪匹配、唤醒与声学回声消除尚未完成或验收；场景按钮只是人工演示。扬声器可能回灌麦克风，需现场检查。
+- 只维护本软件工作区，队友communication和其他目录保持原样。修改素材前备份data。
+
+在本目录执行sha256sum -c SHA256SUMS校验本次源码；具体历史检查范围见player/desktop/VALIDATION.json。软件/依赖/模型各许可与来源沿用各项目，媒体与模型未公开上传。

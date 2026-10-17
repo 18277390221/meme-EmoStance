@@ -9,3 +9,8 @@ player/data/*
 !player/data/README.md
 *.sqlite3
 *.sqlite3-*
+
+models/
+*.onnx
+*.whl
+display-diagnostics.json
