@@ -1,0 +1,139 @@
+{
+  "dataset_version": "V2.0.0",
+  "reference_version": "v1.0.0",
+  "status": "complete",
+  "archive": {
+    "path": "/home/aida102/hks/dataset/V2.0.0/outdata_v2(1).7z",
+    "sha256": "ee17c74286049c1134ebc48c85d25a4d4ea1456a3b6a7713d31162b916ec7963",
+    "unchanged": true
+  },
+  "extraction_manifest": {
+    "path": "/home/aida102/hks/dataset/V2.0.0/extraction_manifest.json",
+    "sha256": "219c922ea5c69cd5758cb7db9e21ed05353ce3e21b5c55a6924278b3a6b68817"
+  },
+  "cleaning": {
+    "report": "/home/aida102/hks/dataset/V2.0.0/cleaning_report.json",
+    "report_sha256": "fe39726fc135188bf71876648ea0680d5c9a61ed0101ea65d07d2257bcc650c5",
+    "raw_dialogues": 34502,
+    "raw_turns": 100000,
+    "retained_dialogues": 34433,
+    "retained_turns": 99745,
+    "retained_annotations": 398980,
+    "deleted_dialogues": 69,
+    "deletion_categories": {
+      "invalid_annotation": 27,
+      "exact_dialogue_prefix": 42
+    },
+    "invalid_issue_categories_by_dialogue": {
+      "garbled_annotation_reason": 12,
+      "failed_annotation_reason": 11,
+      "empty_annotation_reason": 3,
+      "raw_label_or_confidence_conflict": 1
+    },
+    "backup_directory": "/home/aida102/hks/dataset/V2.0.0/backups/before_prefix_cleaning_20261017_192640_688612",
+    "raw_backup_sha256_verified": true
+  },
+  "canonical_dataset": {
+    "path": "/home/aida102/hks/dataset/V2.0.0/cleaned_dialogues.jsonl",
+    "sha256": "308097c4d2f17088cb63db4c3ab728e53026c41beec4ba770b3c07b4e7d71ee5",
+    "manifest_path": "/home/aida102/hks/dataset/V2.0.0/cleaned_dialogues.manifest.json",
+    "manifest_sha256": "1cd774b0aea9927bf168d3def2ecb3b81690fb28dde5ef274ea64912dd6e9aee"
+  },
+  "split_manifest": {
+    "path": "/home/aida102/hks/data_spilt/V2.0.0/metadata/split_manifest.json",
+    "sha256": "3dee0dc81e6c4a847159ab240811ae7be43f668b698c168c5698eb37352208b5"
+  },
+  "seed": 42,
+  "ratios": {
+    "train": 0.8,
+    "dev": 0.1,
+    "test": 0.1
+  },
+  "splits": {
+    "train": {
+      "dialogues": 27547,
+      "dialogue_ratio": 0.8000174251444835,
+      "real_turns": 79926,
+      "annotations": 319704,
+      "adjacent_samples": 52379,
+      "sample_source_roles": {
+        "A": 34899,
+        "B": 17480
+      },
+      "sample_target_roles": {
+        "A": 17480,
+        "B": 34899
+      },
+      "original_source_splits": {
+        "dev": 5695,
+        "test": 2919,
+        "train": 18933
+      }
+    },
+    "dev": {
+      "dialogues": 3443,
+      "dialogue_ratio": 0.09999128742775826,
+      "real_turns": 9842,
+      "annotations": 39368,
+      "adjacent_samples": 6399,
+      "sample_source_roles": {
+        "A": 4308,
+        "B": 2091
+      },
+      "sample_target_roles": {
+        "A": 2091,
+        "B": 4308
+      },
+      "original_source_splits": {
+        "dev": 687,
+        "test": 395,
+        "train": 2361
+      }
+    },
+    "test": {
+      "dialogues": 3443,
+      "dialogue_ratio": 0.09999128742775826,
+      "real_turns": 9977,
+      "annotations": 39908,
+      "adjacent_samples": 6534,
+      "sample_source_roles": {
+        "A": 4324,
+        "B": 2210
+      },
+      "sample_target_roles": {
+        "A": 2210,
+        "B": 4324
+      },
+      "original_source_splits": {
+        "dev": 730,
+        "test": 334,
+        "train": 2379
+      }
+    }
+  },
+  "v1_preservation": {
+    "unchanged": true,
+    "files_sha256_verified": 66
+  },
+  "compatibility_note": "V2 archive contains only complete dialogue-level annotations; optional legacy turn-level files are audited and retained only when present. Modern four-annotator validation rules are unchanged.",
+  "commands": [
+    "python model/tools/clean_dataset.py --root dataset/V2.0.0 --apply --remove-exact-prefixes",
+    "python model/tools/export_cleaned_dialogues.py --source dataset/V2.0.0/data --output dataset/V2.0.0/cleaned_dialogues.jsonl",
+    "python model/tools/build_paper_splits.py --input dataset/V2.0.0/cleaned_dialogues.jsonl --output data_spilt/V2.0.0 --seed 42"
+  ],
+  "tools_sha256": {
+    "model/tools/clean_dataset.py": "754a579406224b64de735721516197ab5fda055cdc77c07db9631f1448282778",
+    "model/tools/export_cleaned_dialogues.py": "d78bfbd31c783cbcf149f4ac85d14fdffe08026e56e76fdadff311d4d5a35ca0",
+    "model/tools/build_paper_splits.py": "3b390b57b1ccf4f86fb72bbb87fdb20c6d8791a6a1b68fbba21c186374ad9059"
+  },
+  "regression_tests": {
+    "test_dataset_cleaning": 8,
+    "test_export_cleaned": 7,
+    "test_paper_splits": 8,
+    "passed": true
+  },
+  "independent_validation": {
+    "passed": true,
+    "report": "/home/aida102/hks/data_spilt/V2.0.0/metadata/validation_report.json"
+  }
+}

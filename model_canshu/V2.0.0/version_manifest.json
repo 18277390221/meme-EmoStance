@@ -1,0 +1,244 @@
+{
+  "version": "V2.0.0",
+  "status": "complete",
+  "saved_at": "2026-10-17T21:12:58.024546+08:00",
+  "source_run": "/home/aida102/hks/model/runs/paper_v2",
+  "selected_planner_epoch": 2,
+  "prefix_global_step": 52379,
+  "git_commit_before_pull": "43bd1511aa3448eb6c807a3c8afd47c8104411f2",
+  "inference_only": true,
+  "prefix_tensors_verified_equal": true,
+  "base_model_path": "/home/aida102/emoji/Mistral-7B-Instruct-v0.3",
+  "base_model_weights_copied": false,
+  "environment": {
+    "python": "3.10.14",
+    "torch": "2.6.0+cu118",
+    "transformers": "5.6.2",
+    "numpy": "2.2.6",
+    "igraph": "1.0.0",
+    "leidenalg": "0.12.0"
+  },
+  "source_sha256": {
+    "planner/config.json": "dbc74124deabcad19aab9cb6828d7000598753064b8ebbd418baf5cfff7523de",
+    "planner/best.pt": "2907d3a5bede8575d46ee64342dc74e8a331125044883e8ba70fc411acf3ee58",
+    "planner/emotion_space.json": "c17058d70d6d0a005d00825b4a951861156f6db327dc88b1aeecf21709ef2397",
+    "planner/manifest.json": "870f4a0a7d6bb76d4bf28cd19ea5a0645d0550795ab74bca006dc3fbfaed8c7d",
+    "generator/manifest.json": "40ac384b73b7a72086c9c274bca7bf988290ba1a56e053a23ef72132f5582ccf",
+    "space.json": "c17058d70d6d0a005d00825b4a951861156f6db327dc88b1aeecf21709ef2397",
+    "response_vectors.npz": "ab87e0f70bfece8597b0f6bf03b7a2fdb83a3703eb7b7748b3b700a49f6d6d9e",
+    "response_anchors.jsonl": "7101dfce53b85cbff1d01f8ddd417dc9219a620cc673e8c09a2025784875f720",
+    "response_index_manifest.json": "fc6cc8a886181a872c3b94af7f8c41882c22c27ae4c708ae933afde18ddfb210",
+    "evaluation.json": "a7f5adb875d764ca6b50ad35d79c29a180ed011d8afabe6fb1977c05d6c2b9e9",
+    "final_smoke.json": "80f570f581755833cc384ae609a8906d5bcb5edda9e53c06422751d0a41f981c",
+    "verification_summary.json": "42280a0ed4f83a16762e5f19630ae70bb460d92be11d436971a046e86781c28f",
+    "tokenizer_diagnostics.json": "d15b77b8c43ef089eb77a270c0ef08c39be8c8ddafc54e8751dbd2c1b755960e",
+    "training_report.md": "450bb5577f332ef11f94c857434acfbaa72a79742d8ff2ab0d57103b3e4a1c0f",
+    "provenance.json": "9449384828c4e1f09a966551c809757c172af006f1304aff5a078862ace14679",
+    "graph/manifest.json": "2059e7bba0c131f9af0f0994c2b7778045767ae78750eb7e3cb423e9918bf6fc",
+    "graph/graph_arrays.npz": "d2ec137d259bfa8040b58021142f11523f229857490f7c9326c3f4c392a4b90d",
+    "manifest.json": "a250a0dd3dabedd7158188e31dc1c13933f4b0c45fc94d7b63e3a15e527311a2",
+    "planner/tokenizer/tokenizer.json": "d22509634089befb55fe34eddfe04e15e0894e711e8b4197f3b15a1812756739",
+    "planner/tokenizer/tokenizer_config.json": "1121ad33ecd98a97b2db184ce896546feb7555bebddf33a2dfe1b1a1077dc847",
+    "planner/encoder_config/config.json": "44db8fe3e26f27221b78bd7d087493caa256992757d0a982678c804b830bd2a9",
+    "generator/best.pt": "26d1dc6fdc2994aa0e511fa0876dca6c5dfd726c3ed2eafe0730330506519cb0"
+  },
+  "files": {
+    "README.md": {
+      "sha256": "4bfc48858eaba76dff10579ef1c8f7f98ab979a9b2450a026f5c28777b86e2ef",
+      "bytes": 1605
+    },
+    "THIRD_PARTY_LICENSES/EmoStance.txt": {
+      "sha256": "cd89376e800edfb05ffd2507871e25cb488989d2ae95478642cea4520fae92a3",
+      "bytes": 1094
+    },
+    "data/train.jsonl": {
+      "sha256": "a0453420202243c2ec96007c4efbb4ceb917f3543a0dcc877807517a1c044838",
+      "bytes": 208145932
+    },
+    "data_split_manifest.json": {
+      "sha256": "3dee0dc81e6c4a847159ab240811ae7be43f668b698c168c5698eb37352208b5",
+      "bytes": 64178
+    },
+    "evaluation.json": {
+      "sha256": "a7f5adb875d764ca6b50ad35d79c29a180ed011d8afabe6fb1977c05d6c2b9e9",
+      "bytes": 38256
+    },
+    "final_smoke.json": {
+      "sha256": "80f570f581755833cc384ae609a8906d5bcb5edda9e53c06422751d0a41f981c",
+      "bytes": 2486
+    },
+    "generator/best.pt": {
+      "sha256": "29cbc412c4bf7ed3d70d6016c6e541ddcfc3e7233d950f422e762e0187f335c1",
+      "bytes": 541215096
+    },
+    "generator/manifest.json": {
+      "sha256": "40ac384b73b7a72086c9c274bca7bf988290ba1a56e053a23ef72132f5582ccf",
+      "bytes": 2405
+    },
+    "graph/graph_arrays.npz": {
+      "sha256": "d2ec137d259bfa8040b58021142f11523f229857490f7c9326c3f4c392a4b90d",
+      "bytes": 520918
+    },
+    "graph/manifest.json": {
+      "sha256": "2059e7bba0c131f9af0f0994c2b7778045767ae78750eb7e3cb423e9918bf6fc",
+      "bytes": 568
+    },
+    "inference_config.json": {
+      "sha256": "8f5c7bfcba7f264b126ec0f6589ee82d7d3caa3e25b49cccef7635c23e669250",
+      "bytes": 1120
+    },
+    "manifest.json": {
+      "sha256": "6b009c5c66e8293d7191af4083f2af848da0085af718f454417d7003998d47db",
+      "bytes": 10894
+    },
+    "planner/best.pt": {
+      "sha256": "2907d3a5bede8575d46ee64342dc74e8a331125044883e8ba70fc411acf3ee58",
+      "bytes": 740909058
+    },
+    "planner/config.json": {
+      "sha256": "dbc74124deabcad19aab9cb6828d7000598753064b8ebbd418baf5cfff7523de",
+      "bytes": 884
+    },
+    "planner/emotion_space.json": {
+      "sha256": "c17058d70d6d0a005d00825b4a951861156f6db327dc88b1aeecf21709ef2397",
+      "bytes": 1301904
+    },
+    "planner/encoder_config/config.json": {
+      "sha256": "44db8fe3e26f27221b78bd7d087493caa256992757d0a982678c804b830bd2a9",
+      "bytes": 857
+    },
+    "planner/manifest.json": {
+      "sha256": "870f4a0a7d6bb76d4bf28cd19ea5a0645d0550795ab74bca006dc3fbfaed8c7d",
+      "bytes": 565
+    },
+    "planner/tokenizer/tokenizer.json": {
+      "sha256": "d22509634089befb55fe34eddfe04e15e0894e711e8b4197f3b15a1812756739",
+      "bytes": 8339973
+    },
+    "planner/tokenizer/tokenizer_config.json": {
+      "sha256": "1121ad33ecd98a97b2db184ce896546feb7555bebddf33a2dfe1b1a1077dc847",
+      "bytes": 536
+    },
+    "provenance.json": {
+      "sha256": "9449384828c4e1f09a966551c809757c172af006f1304aff5a078862ace14679",
+      "bytes": 1214
+    },
+    "response_anchors.jsonl": {
+      "sha256": "7101dfce53b85cbff1d01f8ddd417dc9219a620cc673e8c09a2025784875f720",
+      "bytes": 17161149
+    },
+    "response_index_manifest.json": {
+      "sha256": "fc6cc8a886181a872c3b94af7f8c41882c22c27ae4c708ae933afde18ddfb210",
+      "bytes": 581
+    },
+    "response_vectors.npz": {
+      "sha256": "ab87e0f70bfece8597b0f6bf03b7a2fdb83a3703eb7b7748b3b700a49f6d6d9e",
+      "bytes": 50130154
+    },
+    "run_chat.sh": {
+      "sha256": "b601c6148ae7a1fc87c0c05859bdd32af7d6b9f0a973fcdf7b90048fa479ace4",
+      "bytes": 469
+    },
+    "runtime_dependencies.toml": {
+      "sha256": "4c5c18c67abab5fe1bfe25450895f142181e5461d41908168e63cd7b6603a72d",
+      "bytes": 599
+    },
+    "runtime_source/emostance_meme/__init__.py": {
+      "sha256": "e294340bc9922acdd67b967f674bd2077488f46925789b0b9d3311c2375a7280",
+      "bytes": 105
+    },
+    "runtime_source/emostance_meme/__main__.py": {
+      "sha256": "307299fda7b77d22c64cb51430ec75e5f59d78e9c948786afb3b2544fe45e4b7",
+      "bytes": 79
+    },
+    "runtime_source/emostance_meme/backbone.py": {
+      "sha256": "3e378acfcf1aa0d6a383945d069a60875d9f67d58aa121ca58e8f4ca1cf9ffec",
+      "bytes": 6461
+    },
+    "runtime_source/emostance_meme/cli.py": {
+      "sha256": "3afc573b830c262c5d84ad72b18b10a799707fb6a7159ab53a23d19892834140",
+      "bytes": 3903
+    },
+    "runtime_source/emostance_meme/config.py": {
+      "sha256": "a05ecd2f296768dcf2c6825a12c05bcac17bad67f401d22cd0e5f2efbe774536",
+      "bytes": 5578
+    },
+    "runtime_source/emostance_meme/data.py": {
+      "sha256": "cbd8502eded1850e43117ba8c2fa59c2f028b619c1242c30f36266f865e268f6",
+      "bytes": 18216
+    },
+    "runtime_source/emostance_meme/engine.py": {
+      "sha256": "c7dcd09de661825da37bb588a4759a00ca5a785b1203b4ca9a9605a516c07a3a",
+      "bytes": 3667
+    },
+    "runtime_source/emostance_meme/http_server.py": {
+      "sha256": "0468a12444325520eb8c0134654acdb91ffdb5d17d0f120585a3f64f8bb029c6",
+      "bytes": 3505
+    },
+    "runtime_source/emostance_meme/networks.py": {
+      "sha256": "fd9cb505b1023ee4f18fe22b8239c9f16f3701660559c45147fbbeca52d09b6a",
+      "bytes": 4654
+    },
+    "runtime_source/emostance_meme/paper_engine.py": {
+      "sha256": "3d7fb491b84f81b762215385b252324b7b5f02f36755c2735a1d52b374aac12a",
+      "bytes": 11441
+    },
+    "runtime_source/emostance_meme/paper_generator.py": {
+      "sha256": "26ea4a5544997624a528fd7dd2aee32ce227956d00e77024a94ecba7722c82d8",
+      "bytes": 22256
+    },
+    "runtime_source/emostance_meme/paper_pipeline.py": {
+      "sha256": "25228e2facd7f86caf10c5a8e35e9639c1b5aa4d66411149a066e0196cf95b15",
+      "bytes": 8172
+    },
+    "runtime_source/emostance_meme/paper_planner.py": {
+      "sha256": "6bda3fc5ccc92f21ebb08ec279a606ed2cd87fceb9304338a53a0d525766f202",
+      "bytes": 30258
+    },
+    "runtime_source/emostance_meme/paper_space.py": {
+      "sha256": "2f1faa76376b32e7bb1252d628bb38c2a2eedbf7bc5dcc36338a796e6e9a1169",
+      "bytes": 8173
+    },
+    "runtime_source/emostance_meme/retrieval.py": {
+      "sha256": "980685b4cbe5a2d6bbdc4d4191b8b9579562e761acc374f71a03a7289c3c7fe3",
+      "bytes": 5502
+    },
+    "runtime_source/emostance_meme/service.py": {
+      "sha256": "642e750b70ba7b8b5ef335aa6189eb6b0ecf53c1f6a36876475e2bff8a3b2673",
+      "bytes": 2065
+    },
+    "runtime_source/emostance_meme/session.py": {
+      "sha256": "0a3e89be0a51d60fe7dcebe18cbe2d60434d4c97d922adefeba941eee34ed02d",
+      "bytes": 8930
+    },
+    "runtime_source/emostance_meme/space.py": {
+      "sha256": "66d70272caff78ce838edbcf7a1d3bf8c466e18fbbab1e80cc91cf2036f0f4a1",
+      "bytes": 13384
+    },
+    "runtime_source/emostance_meme/training.py": {
+      "sha256": "69fc4c1d5d69f696f338f6b78564352ec394a97795499373ed07f6a708733f98",
+      "bytes": 13720
+    },
+    "source_manifest.json": {
+      "sha256": "a250a0dd3dabedd7158188e31dc1c13933f4b0c45fc94d7b63e3a15e527311a2",
+      "bytes": 10830
+    },
+    "space.json": {
+      "sha256": "c17058d70d6d0a005d00825b4a951861156f6db327dc88b1aeecf21709ef2397",
+      "bytes": 1301904
+    },
+    "tokenizer_diagnostics.json": {
+      "sha256": "d15b77b8c43ef089eb77a270c0ef08c39be8c8ddafc54e8751dbd2c1b755960e",
+      "bytes": 2361
+    },
+    "training_report.md": {
+      "sha256": "fd95e5697c34407cda979b1863789d677d5a50e0ff0c51c87ef1fe2f91734fcd",
+      "bytes": 4493
+    },
+    "verification_summary.json": {
+      "sha256": "42280a0ed4f83a16762e5f19630ae70bb460d92be11d436971a046e86781c28f",
+      "bytes": 490
+    }
+  },
+  "total_bytes": 1569342642
+}

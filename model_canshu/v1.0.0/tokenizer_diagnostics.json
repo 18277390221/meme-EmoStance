@@ -1,0 +1,109 @@
+{
+  "format_version": 1,
+  "scope": "Only training adjacent-turn samples; full repeated histories are counted per sample exactly as supplied to the planner.",
+  "source": {
+    "path": "/home/aida102/hks/data_spilt/v1.0.0/train.jsonl",
+    "sha256": "112beb3a5ad30947c8598139e4dcec8094ffc0225c2734731d21cf6b5b1056ff",
+    "sample_count": 15134
+  },
+  "tokenizer": {
+    "path": "/home/aida102/hks/model/runs/paper_v1/planner/tokenizer",
+    "tokenizer_json_sha256": "d22509634089befb55fe34eddfe04e15e0894e711e8b4197f3b15a1812756739",
+    "is_fast": true,
+    "class": "DebertaV2Tokenizer",
+    "unk_token": "[UNK]",
+    "unk_token_id": 3,
+    "vocab_size": 128000,
+    "truncation_side": "left",
+    "max_length": 320,
+    "padding": false,
+    "special_tokens_included_in_primary_token_denominator": true
+  },
+  "training_window": {
+    "total_tokens": 606342,
+    "inserted_special_tokens": 30268,
+    "non_special_tokens": 576074,
+    "unk_tokens": 38223,
+    "unk_token_ratio": 0.06303868114034654,
+    "unk_token_percent": 6.303868114034654,
+    "unk_ratio_excluding_inserted_special_tokens": 0.06635085075875669,
+    "samples_containing_unk": 12309,
+    "samples_containing_unk_ratio": 0.8133342143517907,
+    "samples_containing_unk_percent": 81.33342143517906,
+    "mean_tokens": 40.06488700938284,
+    "max_tokens": 320,
+    "min_tokens": 10
+  },
+  "before_truncation": {
+    "total_tokens": 606402,
+    "unk_tokens": 38228,
+    "unk_token_ratio": 0.06304068917978503,
+    "samples_containing_unk": 12309,
+    "mean_tokens": 40.068851592440865,
+    "max_tokens": 361
+  },
+  "truncation": {
+    "samples_truncated": 2,
+    "samples_truncated_ratio": 0.0001321527686005022,
+    "samples_truncated_percent": 0.013215276860050218,
+    "tokens_removed": 60
+  },
+  "unknown_offsets": {
+    "method": "Characters covered by fast-tokenizer offsets of UNK tokens inside the training window; whitespace excluded. A multi-character unknown span contributes each contained character.",
+    "empty_unknown_offsets": 0,
+    "distinct_characters_covered_by_unk": 1232,
+    "top_10_characters": [
+      {
+        "character": "，",
+        "unicode": "U+FF0C",
+        "occurrences_in_unk_spans": 17049
+      },
+      {
+        "character": "！",
+        "unicode": "U+FF01",
+        "occurrences_in_unk_spans": 5461
+      },
+      {
+        "character": "？",
+        "unicode": "U+FF1F",
+        "occurrences_in_unk_spans": 4721
+      },
+      {
+        "character": "…",
+        "unicode": "U+2026",
+        "occurrences_in_unk_spans": 2184
+      },
+      {
+        "character": "啥",
+        "unicode": "U+5565",
+        "occurrences_in_unk_spans": 548
+      },
+      {
+        "character": "哎",
+        "unicode": "U+54CE",
+        "occurrences_in_unk_spans": 312
+      },
+      {
+        "character": "嗯",
+        "unicode": "U+55EF",
+        "occurrences_in_unk_spans": 279
+      },
+      {
+        "character": "瘦",
+        "unicode": "U+7626",
+        "occurrences_in_unk_spans": 224
+      },
+      {
+        "character": "哇",
+        "unicode": "U+54C7",
+        "occurrences_in_unk_spans": 215
+      },
+      {
+        "character": "咋",
+        "unicode": "U+548B",
+        "occurrences_in_unk_spans": 208
+      }
+    ]
+  },
+  "interpretation": "UNK replaces out-of-vocabulary spans and can erase lexical distinctions. This diagnostic quantifies tokenizer coverage and truncation; it does not itself measure reply quality or infer accuracy from vocabulary coverage."
+}

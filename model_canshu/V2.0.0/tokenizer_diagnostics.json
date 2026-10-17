@@ -1,0 +1,60 @@
+{
+  "format_version": 1,
+  "scope": "Only configured training adjacent-turn samples; full repeated histories are counted per sample exactly as supplied to the planner.",
+  "source": {
+    "path": "/home/aida102/hks/data_spilt/V2.0.0/train.jsonl",
+    "sha256": "a0453420202243c2ec96007c4efbb4ceb917f3543a0dcc877807517a1c044838",
+    "sample_count": 52379
+  },
+  "tokenizer": {
+    "path": "/home/aida102/hks/model/runs/paper_v2/planner/tokenizer",
+    "files_sha256": {
+      "tokenizer.json": "d22509634089befb55fe34eddfe04e15e0894e711e8b4197f3b15a1812756739",
+      "tokenizer_config.json": "1121ad33ecd98a97b2db184ce896546feb7555bebddf33a2dfe1b1a1077dc847"
+    },
+    "tokenizer_json_sha256": "d22509634089befb55fe34eddfe04e15e0894e711e8b4197f3b15a1812756739",
+    "is_fast": true,
+    "class": "DebertaV2Tokenizer",
+    "unk_token": "[UNK]",
+    "unk_token_id": 3,
+    "vocab_size": 128000,
+    "truncation_side": "left",
+    "max_length": 320,
+    "padding": false,
+    "special_tokens_included_in_primary_token_denominator": true
+  },
+  "training_window": {
+    "total_tokens": 3313845,
+    "unk_tokens": 228650,
+    "unk_token_ratio": 0.06899839914057537,
+    "unk_token_percent": 6.899839914057537,
+    "samples_containing_unk": 46996,
+    "samples_containing_unk_ratio": 0.8972298058382177,
+    "samples_containing_unk_percent": 89.72298058382177,
+    "mean_tokens": 63.266671757765515,
+    "max_tokens": 320,
+    "min_tokens": 10,
+    "inserted_special_tokens": 104758,
+    "non_special_tokens": 3209087,
+    "unk_ratio_excluding_inserted_special_tokens": 0.07125079500805058
+  },
+  "before_truncation": {
+    "total_tokens": 3315584,
+    "unk_tokens": 228762,
+    "unk_token_ratio": 0.0689959898467359,
+    "unk_token_percent": 6.89959898467359,
+    "samples_containing_unk": 46996,
+    "samples_containing_unk_ratio": 0.8972298058382177,
+    "samples_containing_unk_percent": 89.72298058382177,
+    "mean_tokens": 63.29987208614139,
+    "max_tokens": 432,
+    "min_tokens": 10
+  },
+  "truncation": {
+    "samples_truncated": 58,
+    "samples_truncated_ratio": 0.0011073139998854502,
+    "samples_truncated_percent": 0.11073139998854503,
+    "tokens_removed": 1739
+  },
+  "interpretation": "UNK replaces out-of-vocabulary spans and can erase lexical distinctions. Coverage and truncation statistics do not measure reply quality or imply accuracy."
+}

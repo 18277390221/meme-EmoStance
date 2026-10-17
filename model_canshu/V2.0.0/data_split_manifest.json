@@ -1,0 +1,2484 @@
+{
+  "schema_version": "emostance-meme-adjacent-v1",
+  "source": {
+    "path": "/home/aida102/hks/dataset/V2.0.0/cleaned_dialogues.jsonl",
+    "sha256": "308097c4d2f17088cb63db4c3ab728e53026c41beec4ba770b3c07b4e7d71ee5",
+    "dialogues": 34433,
+    "turns": 99745,
+    "export_manifest": {
+      "path": "/home/aida102/hks/dataset/V2.0.0/cleaned_dialogues.manifest.json",
+      "sha256": "1cd774b0aea9927bf168d3def2ecb3b81690fb28dde5ef274ea64912dd6e9aee"
+    },
+    "upstream_directory": "/home/aida102/hks/dataset/V2.0.0/data",
+    "upstream_input_sha256": {
+      "dialogues_pool.jsonl": "8fc5779513cc575536cea3527d9cb8a70d6128c554d43c6a4298a230f7e971a0",
+      "meme_catalog.jsonl": "1e2fc302cfb4640e0cb4943005bde022fa6dedae7e91388f5c875566e822de33",
+      "annotations_dialogue_pool_paper1.jsonl": "7ac9da04b4f4fc07541f32b3e71929663cfaead44c97a9318030ad031dc46827",
+      "annotations_dialogue_pool_paper2.jsonl": "e204b9322c5734ae07569aa247f90b707d14e0672ab0b7da714e437e46041772",
+      "annotations_dialogue_pool_paper3.jsonl": "278054d1bf07e3472eef5389cadd2018ad481c0bedb1009ba2246a6909c5c13b",
+      "annotations_dialogue_pool_paper4.jsonl": "31ceb2154f2670ace06ea394c5ffebeb8d813878292c0700034216257bb38160"
+    }
+  },
+  "seed": 42,
+  "requested_ratios": {
+    "train": 0.8,
+    "dev": 0.1,
+    "test": 0.1
+  },
+  "target_dialogue_counts": {
+    "train": 27547,
+    "dev": 3443,
+    "test": 3443
+  },
+  "rules": {
+    "split_unit": "whole dialogue and its four annotators; related normalized duplicate/proper-prefix dialogues remain in one connected group",
+    "normalization": "collapse whitespace; remove spaces adjacent to Chinese characters and between consecutive digits; preserve punctuation, case and turn roles",
+    "slicing": "all consecutive source/target turns, A->B and B->A, with original full history through source; N turns yield N-1 examples",
+    "meme_distribution": "sum confidence per meme_id divided by total confidence across paper1..paper4",
+    "turn_weight": "sum confidence across paper1..paper4 / (4 * 5)",
+    "original_source_split": "provenance only; source_split and split are the newly assigned split"
+  },
+  "splits": {
+    "train": {
+      "dialogues": 27547,
+      "dialogue_ratio": 0.8000174251444835,
+      "real_turns": 79926,
+      "annotations": 319704,
+      "adjacent_samples": 52379,
+      "sample_source_roles": {
+        "A": 34899,
+        "B": 17480
+      },
+      "sample_target_roles": {
+        "A": 17480,
+        "B": 34899
+      },
+      "original_source_splits": {
+        "dev": 5695,
+        "test": 2919,
+        "train": 18933
+      }
+    },
+    "dev": {
+      "dialogues": 3443,
+      "dialogue_ratio": 0.09999128742775826,
+      "real_turns": 9842,
+      "annotations": 39368,
+      "adjacent_samples": 6399,
+      "sample_source_roles": {
+        "A": 4308,
+        "B": 2091
+      },
+      "sample_target_roles": {
+        "A": 2091,
+        "B": 4308
+      },
+      "original_source_splits": {
+        "dev": 687,
+        "test": 395,
+        "train": 2361
+      }
+    },
+    "test": {
+      "dialogues": 3443,
+      "dialogue_ratio": 0.09999128742775826,
+      "real_turns": 9977,
+      "annotations": 39908,
+      "adjacent_samples": 6534,
+      "sample_source_roles": {
+        "A": 4324,
+        "B": 2210
+      },
+      "sample_target_roles": {
+        "A": 2210,
+        "B": 4324
+      },
+      "original_source_splits": {
+        "dev": 730,
+        "test": 334,
+        "train": 2379
+      }
+    }
+  },
+  "meme_coverage": {
+    "train": {
+      "meme_ids": [
+        "meme-0001",
+        "meme-0002",
+        "meme-0003",
+        "meme-0004",
+        "meme-0005",
+        "meme-0006",
+        "meme-0007",
+        "meme-0008",
+        "meme-0009",
+        "meme-0010",
+        "meme-0011",
+        "meme-0012",
+        "meme-0013",
+        "meme-0014",
+        "meme-0015",
+        "meme-0016",
+        "meme-0017",
+        "meme-0018",
+        "meme-0019",
+        "meme-0020",
+        "meme-0021",
+        "meme-0022",
+        "meme-0023",
+        "meme-0024",
+        "meme-0025",
+        "meme-0026",
+        "meme-0027",
+        "meme-0028",
+        "meme-0029",
+        "meme-0030",
+        "meme-0031",
+        "meme-0032",
+        "meme-0033",
+        "meme-0034",
+        "meme-0035",
+        "meme-0036",
+        "meme-0037",
+        "meme-0038",
+        "meme-0039",
+        "meme-0040",
+        "meme-0041",
+        "meme-0042",
+        "meme-0043",
+        "meme-0044",
+        "meme-0045",
+        "meme-0046",
+        "meme-0047",
+        "meme-0048",
+        "meme-0049",
+        "meme-0050",
+        "meme-0051",
+        "meme-0052",
+        "meme-0053",
+        "meme-0054",
+        "meme-0055",
+        "meme-0056",
+        "meme-0057",
+        "meme-0058",
+        "meme-0059",
+        "meme-0060",
+        "meme-0061",
+        "meme-0062",
+        "meme-0063",
+        "meme-0064",
+        "meme-0065",
+        "meme-0066",
+        "meme-0067",
+        "meme-0068",
+        "meme-0069",
+        "meme-0070",
+        "meme-0071",
+        "meme-0072",
+        "meme-0073",
+        "meme-0074",
+        "meme-0075",
+        "meme-0076",
+        "meme-0077",
+        "meme-0078",
+        "meme-0079",
+        "meme-0080",
+        "meme-0081",
+        "meme-0082",
+        "meme-0083",
+        "meme-0084",
+        "meme-0085",
+        "meme-0086",
+        "meme-0087",
+        "meme-0088",
+        "meme-0089",
+        "meme-0090",
+        "meme-0091",
+        "meme-0092",
+        "meme-0093",
+        "meme-0094",
+        "meme-0095",
+        "meme-0096",
+        "meme-0097",
+        "meme-0098",
+        "meme-0099",
+        "meme-0100",
+        "meme-0101",
+        "meme-0102",
+        "meme-0103",
+        "meme-0104",
+        "meme-0105",
+        "meme-0106",
+        "meme-0107",
+        "meme-0108",
+        "meme-0109",
+        "meme-0110",
+        "meme-0111",
+        "meme-0112",
+        "meme-0113",
+        "meme-0114",
+        "meme-0115",
+        "meme-0116",
+        "meme-0117",
+        "meme-0118",
+        "meme-0119",
+        "meme-0120",
+        "meme-0121",
+        "meme-0122",
+        "meme-0123",
+        "meme-0124",
+        "meme-0125",
+        "meme-0126",
+        "meme-0127",
+        "meme-0128",
+        "meme-0129",
+        "meme-0130",
+        "meme-0131",
+        "meme-0132",
+        "meme-0133",
+        "meme-0134",
+        "meme-0135",
+        "meme-0136",
+        "meme-0137",
+        "meme-0138",
+        "meme-0139",
+        "meme-0140",
+        "meme-0141",
+        "meme-0142",
+        "meme-0143",
+        "meme-0144",
+        "meme-0145",
+        "meme-0146",
+        "meme-0147",
+        "meme-0148",
+        "meme-0149",
+        "meme-0150",
+        "meme-0151",
+        "meme-0152",
+        "meme-0153",
+        "meme-0154",
+        "meme-0155",
+        "meme-0156",
+        "meme-0157",
+        "meme-0158",
+        "meme-0159",
+        "meme-0160",
+        "meme-0161",
+        "meme-0162",
+        "meme-0163",
+        "meme-0164",
+        "meme-0165",
+        "meme-0166"
+      ],
+      "meme_id_count": 166,
+      "annotation_counts": {
+        "meme-0001": 352,
+        "meme-0002": 5268,
+        "meme-0003": 153,
+        "meme-0004": 1432,
+        "meme-0005": 1251,
+        "meme-0006": 742,
+        "meme-0007": 1952,
+        "meme-0008": 3715,
+        "meme-0009": 325,
+        "meme-0010": 6497,
+        "meme-0011": 3574,
+        "meme-0012": 440,
+        "meme-0013": 238,
+        "meme-0014": 1963,
+        "meme-0015": 409,
+        "meme-0016": 249,
+        "meme-0017": 2307,
+        "meme-0018": 1481,
+        "meme-0019": 859,
+        "meme-0020": 4774,
+        "meme-0021": 13053,
+        "meme-0022": 432,
+        "meme-0023": 5285,
+        "meme-0024": 2742,
+        "meme-0025": 4137,
+        "meme-0026": 655,
+        "meme-0027": 143,
+        "meme-0028": 1008,
+        "meme-0029": 1192,
+        "meme-0030": 400,
+        "meme-0031": 2085,
+        "meme-0032": 1928,
+        "meme-0033": 1448,
+        "meme-0034": 474,
+        "meme-0035": 1208,
+        "meme-0036": 24,
+        "meme-0037": 67,
+        "meme-0038": 9,
+        "meme-0039": 347,
+        "meme-0040": 392,
+        "meme-0041": 129,
+        "meme-0042": 2152,
+        "meme-0043": 528,
+        "meme-0044": 3143,
+        "meme-0045": 381,
+        "meme-0046": 125,
+        "meme-0047": 572,
+        "meme-0048": 281,
+        "meme-0049": 14,
+        "meme-0050": 745,
+        "meme-0051": 292,
+        "meme-0052": 535,
+        "meme-0053": 726,
+        "meme-0054": 64,
+        "meme-0055": 8960,
+        "meme-0056": 772,
+        "meme-0057": 68,
+        "meme-0058": 3638,
+        "meme-0059": 53,
+        "meme-0060": 185,
+        "meme-0061": 107,
+        "meme-0062": 1429,
+        "meme-0063": 2146,
+        "meme-0064": 1256,
+        "meme-0065": 3552,
+        "meme-0066": 227,
+        "meme-0067": 417,
+        "meme-0068": 227,
+        "meme-0069": 116,
+        "meme-0070": 54,
+        "meme-0071": 1026,
+        "meme-0072": 61,
+        "meme-0073": 1204,
+        "meme-0074": 123,
+        "meme-0075": 704,
+        "meme-0076": 340,
+        "meme-0077": 1112,
+        "meme-0078": 136,
+        "meme-0079": 67,
+        "meme-0080": 557,
+        "meme-0081": 4521,
+        "meme-0082": 10580,
+        "meme-0083": 1905,
+        "meme-0084": 8548,
+        "meme-0085": 3905,
+        "meme-0086": 4500,
+        "meme-0087": 548,
+        "meme-0088": 873,
+        "meme-0089": 102,
+        "meme-0090": 338,
+        "meme-0091": 10451,
+        "meme-0092": 2201,
+        "meme-0093": 4681,
+        "meme-0094": 2872,
+        "meme-0095": 7953,
+        "meme-0096": 128,
+        "meme-0097": 634,
+        "meme-0098": 4905,
+        "meme-0099": 1614,
+        "meme-0100": 1179,
+        "meme-0101": 619,
+        "meme-0102": 1111,
+        "meme-0103": 114,
+        "meme-0104": 4310,
+        "meme-0105": 380,
+        "meme-0106": 2742,
+        "meme-0107": 58,
+        "meme-0108": 53,
+        "meme-0109": 430,
+        "meme-0110": 3502,
+        "meme-0111": 750,
+        "meme-0112": 304,
+        "meme-0113": 850,
+        "meme-0114": 443,
+        "meme-0115": 95,
+        "meme-0116": 43,
+        "meme-0117": 23409,
+        "meme-0118": 153,
+        "meme-0119": 126,
+        "meme-0120": 2208,
+        "meme-0121": 761,
+        "meme-0122": 1228,
+        "meme-0123": 9104,
+        "meme-0124": 774,
+        "meme-0125": 1208,
+        "meme-0126": 231,
+        "meme-0127": 144,
+        "meme-0128": 123,
+        "meme-0129": 225,
+        "meme-0130": 194,
+        "meme-0131": 234,
+        "meme-0132": 1913,
+        "meme-0133": 421,
+        "meme-0134": 1678,
+        "meme-0135": 278,
+        "meme-0136": 413,
+        "meme-0137": 4731,
+        "meme-0138": 31,
+        "meme-0139": 40,
+        "meme-0140": 4848,
+        "meme-0141": 444,
+        "meme-0142": 4511,
+        "meme-0143": 2041,
+        "meme-0144": 828,
+        "meme-0145": 939,
+        "meme-0146": 1702,
+        "meme-0147": 302,
+        "meme-0148": 156,
+        "meme-0149": 266,
+        "meme-0150": 411,
+        "meme-0151": 5321,
+        "meme-0152": 128,
+        "meme-0153": 850,
+        "meme-0154": 4086,
+        "meme-0155": 197,
+        "meme-0156": 2327,
+        "meme-0157": 392,
+        "meme-0158": 2134,
+        "meme-0159": 1130,
+        "meme-0160": 1161,
+        "meme-0161": 3870,
+        "meme-0162": 338,
+        "meme-0163": 20638,
+        "meme-0164": 2506,
+        "meme-0165": 2635,
+        "meme-0166": 4440
+      },
+      "unseen_in_train": []
+    },
+    "dev": {
+      "meme_ids": [
+        "meme-0001",
+        "meme-0002",
+        "meme-0003",
+        "meme-0004",
+        "meme-0005",
+        "meme-0006",
+        "meme-0007",
+        "meme-0008",
+        "meme-0009",
+        "meme-0010",
+        "meme-0011",
+        "meme-0012",
+        "meme-0013",
+        "meme-0014",
+        "meme-0015",
+        "meme-0016",
+        "meme-0017",
+        "meme-0018",
+        "meme-0019",
+        "meme-0020",
+        "meme-0021",
+        "meme-0022",
+        "meme-0023",
+        "meme-0024",
+        "meme-0025",
+        "meme-0026",
+        "meme-0027",
+        "meme-0028",
+        "meme-0029",
+        "meme-0030",
+        "meme-0031",
+        "meme-0032",
+        "meme-0033",
+        "meme-0034",
+        "meme-0035",
+        "meme-0036",
+        "meme-0037",
+        "meme-0039",
+        "meme-0040",
+        "meme-0041",
+        "meme-0042",
+        "meme-0043",
+        "meme-0044",
+        "meme-0045",
+        "meme-0046",
+        "meme-0047",
+        "meme-0048",
+        "meme-0049",
+        "meme-0050",
+        "meme-0051",
+        "meme-0052",
+        "meme-0053",
+        "meme-0054",
+        "meme-0055",
+        "meme-0056",
+        "meme-0057",
+        "meme-0058",
+        "meme-0059",
+        "meme-0060",
+        "meme-0061",
+        "meme-0062",
+        "meme-0063",
+        "meme-0064",
+        "meme-0065",
+        "meme-0066",
+        "meme-0067",
+        "meme-0068",
+        "meme-0069",
+        "meme-0070",
+        "meme-0071",
+        "meme-0072",
+        "meme-0073",
+        "meme-0074",
+        "meme-0075",
+        "meme-0076",
+        "meme-0077",
+        "meme-0078",
+        "meme-0079",
+        "meme-0080",
+        "meme-0081",
+        "meme-0082",
+        "meme-0083",
+        "meme-0084",
+        "meme-0085",
+        "meme-0086",
+        "meme-0087",
+        "meme-0088",
+        "meme-0089",
+        "meme-0090",
+        "meme-0091",
+        "meme-0092",
+        "meme-0093",
+        "meme-0094",
+        "meme-0095",
+        "meme-0096",
+        "meme-0097",
+        "meme-0098",
+        "meme-0099",
+        "meme-0100",
+        "meme-0101",
+        "meme-0102",
+        "meme-0103",
+        "meme-0104",
+        "meme-0105",
+        "meme-0106",
+        "meme-0107",
+        "meme-0108",
+        "meme-0109",
+        "meme-0110",
+        "meme-0111",
+        "meme-0112",
+        "meme-0113",
+        "meme-0114",
+        "meme-0115",
+        "meme-0116",
+        "meme-0117",
+        "meme-0118",
+        "meme-0119",
+        "meme-0120",
+        "meme-0121",
+        "meme-0122",
+        "meme-0123",
+        "meme-0124",
+        "meme-0125",
+        "meme-0126",
+        "meme-0127",
+        "meme-0128",
+        "meme-0129",
+        "meme-0130",
+        "meme-0131",
+        "meme-0132",
+        "meme-0133",
+        "meme-0134",
+        "meme-0135",
+        "meme-0136",
+        "meme-0137",
+        "meme-0138",
+        "meme-0139",
+        "meme-0140",
+        "meme-0141",
+        "meme-0142",
+        "meme-0143",
+        "meme-0144",
+        "meme-0145",
+        "meme-0146",
+        "meme-0147",
+        "meme-0148",
+        "meme-0149",
+        "meme-0150",
+        "meme-0151",
+        "meme-0152",
+        "meme-0153",
+        "meme-0154",
+        "meme-0155",
+        "meme-0156",
+        "meme-0157",
+        "meme-0158",
+        "meme-0159",
+        "meme-0160",
+        "meme-0161",
+        "meme-0162",
+        "meme-0163",
+        "meme-0164",
+        "meme-0165",
+        "meme-0166"
+      ],
+      "meme_id_count": 165,
+      "annotation_counts": {
+        "meme-0001": 45,
+        "meme-0002": 641,
+        "meme-0003": 24,
+        "meme-0004": 185,
+        "meme-0005": 152,
+        "meme-0006": 123,
+        "meme-0007": 244,
+        "meme-0008": 500,
+        "meme-0009": 45,
+        "meme-0010": 833,
+        "meme-0011": 446,
+        "meme-0012": 50,
+        "meme-0013": 22,
+        "meme-0014": 230,
+        "meme-0015": 54,
+        "meme-0016": 26,
+        "meme-0017": 286,
+        "meme-0018": 185,
+        "meme-0019": 106,
+        "meme-0020": 589,
+        "meme-0021": 1612,
+        "meme-0022": 49,
+        "meme-0023": 666,
+        "meme-0024": 366,
+        "meme-0025": 474,
+        "meme-0026": 70,
+        "meme-0027": 11,
+        "meme-0028": 142,
+        "meme-0029": 133,
+        "meme-0030": 40,
+        "meme-0031": 236,
+        "meme-0032": 227,
+        "meme-0033": 172,
+        "meme-0034": 64,
+        "meme-0035": 134,
+        "meme-0036": 1,
+        "meme-0037": 7,
+        "meme-0039": 45,
+        "meme-0040": 45,
+        "meme-0041": 15,
+        "meme-0042": 263,
+        "meme-0043": 70,
+        "meme-0044": 352,
+        "meme-0045": 42,
+        "meme-0046": 14,
+        "meme-0047": 63,
+        "meme-0048": 40,
+        "meme-0049": 1,
+        "meme-0050": 87,
+        "meme-0051": 36,
+        "meme-0052": 71,
+        "meme-0053": 101,
+        "meme-0054": 4,
+        "meme-0055": 1075,
+        "meme-0056": 95,
+        "meme-0057": 8,
+        "meme-0058": 424,
+        "meme-0059": 9,
+        "meme-0060": 22,
+        "meme-0061": 15,
+        "meme-0062": 194,
+        "meme-0063": 256,
+        "meme-0064": 177,
+        "meme-0065": 459,
+        "meme-0066": 22,
+        "meme-0067": 51,
+        "meme-0068": 28,
+        "meme-0069": 10,
+        "meme-0070": 9,
+        "meme-0071": 120,
+        "meme-0072": 5,
+        "meme-0073": 122,
+        "meme-0074": 11,
+        "meme-0075": 95,
+        "meme-0076": 44,
+        "meme-0077": 133,
+        "meme-0078": 15,
+        "meme-0079": 4,
+        "meme-0080": 69,
+        "meme-0081": 539,
+        "meme-0082": 1397,
+        "meme-0083": 221,
+        "meme-0084": 1052,
+        "meme-0085": 456,
+        "meme-0086": 524,
+        "meme-0087": 63,
+        "meme-0088": 117,
+        "meme-0089": 12,
+        "meme-0090": 34,
+        "meme-0091": 1337,
+        "meme-0092": 303,
+        "meme-0093": 594,
+        "meme-0094": 357,
+        "meme-0095": 973,
+        "meme-0096": 17,
+        "meme-0097": 58,
+        "meme-0098": 577,
+        "meme-0099": 189,
+        "meme-0100": 137,
+        "meme-0101": 75,
+        "meme-0102": 115,
+        "meme-0103": 12,
+        "meme-0104": 564,
+        "meme-0105": 34,
+        "meme-0106": 324,
+        "meme-0107": 11,
+        "meme-0108": 4,
+        "meme-0109": 79,
+        "meme-0110": 398,
+        "meme-0111": 108,
+        "meme-0112": 39,
+        "meme-0113": 97,
+        "meme-0114": 67,
+        "meme-0115": 9,
+        "meme-0116": 3,
+        "meme-0117": 2915,
+        "meme-0118": 15,
+        "meme-0119": 12,
+        "meme-0120": 255,
+        "meme-0121": 114,
+        "meme-0122": 174,
+        "meme-0123": 1130,
+        "meme-0124": 120,
+        "meme-0125": 160,
+        "meme-0126": 22,
+        "meme-0127": 29,
+        "meme-0128": 9,
+        "meme-0129": 30,
+        "meme-0130": 19,
+        "meme-0131": 25,
+        "meme-0132": 249,
+        "meme-0133": 54,
+        "meme-0134": 198,
+        "meme-0135": 31,
+        "meme-0136": 52,
+        "meme-0137": 596,
+        "meme-0138": 8,
+        "meme-0139": 6,
+        "meme-0140": 573,
+        "meme-0141": 50,
+        "meme-0142": 568,
+        "meme-0143": 245,
+        "meme-0144": 116,
+        "meme-0145": 112,
+        "meme-0146": 188,
+        "meme-0147": 38,
+        "meme-0148": 24,
+        "meme-0149": 34,
+        "meme-0150": 53,
+        "meme-0151": 665,
+        "meme-0152": 17,
+        "meme-0153": 91,
+        "meme-0154": 517,
+        "meme-0155": 38,
+        "meme-0156": 295,
+        "meme-0157": 29,
+        "meme-0158": 268,
+        "meme-0159": 138,
+        "meme-0160": 101,
+        "meme-0161": 510,
+        "meme-0162": 36,
+        "meme-0163": 2541,
+        "meme-0164": 283,
+        "meme-0165": 314,
+        "meme-0166": 494
+      },
+      "unseen_in_train": []
+    },
+    "test": {
+      "meme_ids": [
+        "meme-0001",
+        "meme-0002",
+        "meme-0003",
+        "meme-0004",
+        "meme-0005",
+        "meme-0006",
+        "meme-0007",
+        "meme-0008",
+        "meme-0009",
+        "meme-0010",
+        "meme-0011",
+        "meme-0012",
+        "meme-0013",
+        "meme-0014",
+        "meme-0015",
+        "meme-0016",
+        "meme-0017",
+        "meme-0018",
+        "meme-0019",
+        "meme-0020",
+        "meme-0021",
+        "meme-0022",
+        "meme-0023",
+        "meme-0024",
+        "meme-0025",
+        "meme-0026",
+        "meme-0027",
+        "meme-0028",
+        "meme-0029",
+        "meme-0030",
+        "meme-0031",
+        "meme-0032",
+        "meme-0033",
+        "meme-0034",
+        "meme-0035",
+        "meme-0036",
+        "meme-0037",
+        "meme-0038",
+        "meme-0039",
+        "meme-0040",
+        "meme-0041",
+        "meme-0042",
+        "meme-0043",
+        "meme-0044",
+        "meme-0045",
+        "meme-0046",
+        "meme-0047",
+        "meme-0048",
+        "meme-0049",
+        "meme-0050",
+        "meme-0051",
+        "meme-0052",
+        "meme-0053",
+        "meme-0054",
+        "meme-0055",
+        "meme-0056",
+        "meme-0057",
+        "meme-0058",
+        "meme-0059",
+        "meme-0060",
+        "meme-0061",
+        "meme-0062",
+        "meme-0063",
+        "meme-0064",
+        "meme-0065",
+        "meme-0066",
+        "meme-0067",
+        "meme-0068",
+        "meme-0069",
+        "meme-0070",
+        "meme-0071",
+        "meme-0072",
+        "meme-0073",
+        "meme-0074",
+        "meme-0075",
+        "meme-0076",
+        "meme-0077",
+        "meme-0078",
+        "meme-0079",
+        "meme-0080",
+        "meme-0081",
+        "meme-0082",
+        "meme-0083",
+        "meme-0084",
+        "meme-0085",
+        "meme-0086",
+        "meme-0087",
+        "meme-0088",
+        "meme-0089",
+        "meme-0090",
+        "meme-0091",
+        "meme-0092",
+        "meme-0093",
+        "meme-0094",
+        "meme-0095",
+        "meme-0096",
+        "meme-0097",
+        "meme-0098",
+        "meme-0099",
+        "meme-0100",
+        "meme-0101",
+        "meme-0102",
+        "meme-0103",
+        "meme-0104",
+        "meme-0105",
+        "meme-0106",
+        "meme-0107",
+        "meme-0108",
+        "meme-0109",
+        "meme-0110",
+        "meme-0111",
+        "meme-0112",
+        "meme-0113",
+        "meme-0114",
+        "meme-0115",
+        "meme-0116",
+        "meme-0117",
+        "meme-0118",
+        "meme-0119",
+        "meme-0120",
+        "meme-0121",
+        "meme-0122",
+        "meme-0123",
+        "meme-0124",
+        "meme-0125",
+        "meme-0126",
+        "meme-0127",
+        "meme-0128",
+        "meme-0129",
+        "meme-0130",
+        "meme-0131",
+        "meme-0132",
+        "meme-0133",
+        "meme-0134",
+        "meme-0135",
+        "meme-0136",
+        "meme-0137",
+        "meme-0138",
+        "meme-0139",
+        "meme-0140",
+        "meme-0141",
+        "meme-0142",
+        "meme-0143",
+        "meme-0144",
+        "meme-0145",
+        "meme-0146",
+        "meme-0147",
+        "meme-0148",
+        "meme-0149",
+        "meme-0150",
+        "meme-0151",
+        "meme-0152",
+        "meme-0153",
+        "meme-0154",
+        "meme-0155",
+        "meme-0156",
+        "meme-0157",
+        "meme-0158",
+        "meme-0159",
+        "meme-0160",
+        "meme-0161",
+        "meme-0162",
+        "meme-0163",
+        "meme-0164",
+        "meme-0165",
+        "meme-0166"
+      ],
+      "meme_id_count": 166,
+      "annotation_counts": {
+        "meme-0001": 37,
+        "meme-0002": 687,
+        "meme-0003": 18,
+        "meme-0004": 190,
+        "meme-0005": 170,
+        "meme-0006": 108,
+        "meme-0007": 225,
+        "meme-0008": 426,
+        "meme-0009": 34,
+        "meme-0010": 783,
+        "meme-0011": 432,
+        "meme-0012": 48,
+        "meme-0013": 36,
+        "meme-0014": 251,
+        "meme-0015": 47,
+        "meme-0016": 29,
+        "meme-0017": 297,
+        "meme-0018": 208,
+        "meme-0019": 116,
+        "meme-0020": 549,
+        "meme-0021": 1583,
+        "meme-0022": 65,
+        "meme-0023": 691,
+        "meme-0024": 316,
+        "meme-0025": 500,
+        "meme-0026": 69,
+        "meme-0027": 17,
+        "meme-0028": 122,
+        "meme-0029": 153,
+        "meme-0030": 41,
+        "meme-0031": 244,
+        "meme-0032": 239,
+        "meme-0033": 176,
+        "meme-0034": 67,
+        "meme-0035": 146,
+        "meme-0036": 2,
+        "meme-0037": 3,
+        "meme-0038": 2,
+        "meme-0039": 38,
+        "meme-0040": 55,
+        "meme-0041": 18,
+        "meme-0042": 256,
+        "meme-0043": 76,
+        "meme-0044": 404,
+        "meme-0045": 58,
+        "meme-0046": 16,
+        "meme-0047": 60,
+        "meme-0048": 30,
+        "meme-0049": 4,
+        "meme-0050": 101,
+        "meme-0051": 43,
+        "meme-0052": 73,
+        "meme-0053": 127,
+        "meme-0054": 11,
+        "meme-0055": 1131,
+        "meme-0056": 71,
+        "meme-0057": 3,
+        "meme-0058": 490,
+        "meme-0059": 9,
+        "meme-0060": 23,
+        "meme-0061": 13,
+        "meme-0062": 174,
+        "meme-0063": 313,
+        "meme-0064": 145,
+        "meme-0065": 425,
+        "meme-0066": 28,
+        "meme-0067": 62,
+        "meme-0068": 29,
+        "meme-0069": 11,
+        "meme-0070": 8,
+        "meme-0071": 158,
+        "meme-0072": 8,
+        "meme-0073": 165,
+        "meme-0074": 18,
+        "meme-0075": 76,
+        "meme-0076": 37,
+        "meme-0077": 160,
+        "meme-0078": 19,
+        "meme-0079": 5,
+        "meme-0080": 64,
+        "meme-0081": 574,
+        "meme-0082": 1241,
+        "meme-0083": 231,
+        "meme-0084": 1032,
+        "meme-0085": 506,
+        "meme-0086": 529,
+        "meme-0087": 79,
+        "meme-0088": 92,
+        "meme-0089": 9,
+        "meme-0090": 39,
+        "meme-0091": 1337,
+        "meme-0092": 256,
+        "meme-0093": 583,
+        "meme-0094": 345,
+        "meme-0095": 943,
+        "meme-0096": 9,
+        "meme-0097": 86,
+        "meme-0098": 559,
+        "meme-0099": 229,
+        "meme-0100": 163,
+        "meme-0101": 61,
+        "meme-0102": 136,
+        "meme-0103": 3,
+        "meme-0104": 578,
+        "meme-0105": 50,
+        "meme-0106": 365,
+        "meme-0107": 10,
+        "meme-0108": 4,
+        "meme-0109": 75,
+        "meme-0110": 410,
+        "meme-0111": 101,
+        "meme-0112": 46,
+        "meme-0113": 106,
+        "meme-0114": 60,
+        "meme-0115": 7,
+        "meme-0116": 3,
+        "meme-0117": 2778,
+        "meme-0118": 11,
+        "meme-0119": 15,
+        "meme-0120": 256,
+        "meme-0121": 109,
+        "meme-0122": 156,
+        "meme-0123": 1129,
+        "meme-0124": 122,
+        "meme-0125": 142,
+        "meme-0126": 31,
+        "meme-0127": 14,
+        "meme-0128": 23,
+        "meme-0129": 17,
+        "meme-0130": 20,
+        "meme-0131": 25,
+        "meme-0132": 237,
+        "meme-0133": 62,
+        "meme-0134": 201,
+        "meme-0135": 18,
+        "meme-0136": 50,
+        "meme-0137": 646,
+        "meme-0138": 3,
+        "meme-0139": 5,
+        "meme-0140": 606,
+        "meme-0141": 61,
+        "meme-0142": 601,
+        "meme-0143": 291,
+        "meme-0144": 85,
+        "meme-0145": 136,
+        "meme-0146": 233,
+        "meme-0147": 35,
+        "meme-0148": 18,
+        "meme-0149": 35,
+        "meme-0150": 55,
+        "meme-0151": 698,
+        "meme-0152": 21,
+        "meme-0153": 135,
+        "meme-0154": 554,
+        "meme-0155": 37,
+        "meme-0156": 324,
+        "meme-0157": 43,
+        "meme-0158": 262,
+        "meme-0159": 147,
+        "meme-0160": 143,
+        "meme-0161": 468,
+        "meme-0162": 38,
+        "meme-0163": 2614,
+        "meme-0164": 313,
+        "meme-0165": 345,
+        "meme-0166": 541
+      },
+      "unseen_in_train": []
+    }
+  },
+  "grouping": {
+    "group_count": 34331,
+    "nonsingleton_group_count": 98,
+    "related_dialogue_count": 200,
+    "relations": [
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00002563",
+        "second_dialogue_id": "lccc-train-00011136"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00001622",
+        "second_dialogue_id": "lccc-train-00003108"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00000668",
+        "second_dialogue_id": "lccc-train-00020323"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00002511",
+        "second_dialogue_id": "lccc-train-00021976"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00001259",
+        "second_dialogue_id": "lccc-train-00002520"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00006841",
+        "second_dialogue_id": "lccc-train-00005935"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00001075",
+        "second_dialogue_id": "lccc-train-00019658"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00004233",
+        "second_dialogue_id": "lccc-train-00004521"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000386",
+        "second_dialogue_id": "lccc-train-00010430"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00000517",
+        "second_dialogue_id": "lccc-train-00017111"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00002213",
+        "second_dialogue_id": "lccc-train-00009546"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00006092",
+        "second_dialogue_id": "lccc-train-00022724"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00003211",
+        "second_dialogue_id": "lccc-train-00000612"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00006764",
+        "second_dialogue_id": "lccc-train-00010065"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00005578",
+        "second_dialogue_id": "lccc-train-00012184"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00006380",
+        "second_dialogue_id": "lccc-train-00011279"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00001528",
+        "second_dialogue_id": "lccc-train-00008411"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00003455",
+        "second_dialogue_id": "lccc-train-00006201"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00002948",
+        "second_dialogue_id": "lccc-train-00012709"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00001148",
+        "second_dialogue_id": "lccc-train-00000222"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00001148",
+        "second_dialogue_id": "lccc-train-00007501"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003015",
+        "second_dialogue_id": "lccc-train-00010127"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00002447",
+        "second_dialogue_id": "lccc-train-00001515"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003222",
+        "second_dialogue_id": "lccc-train-00002586"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00000680",
+        "second_dialogue_id": "lccc-train-00000047"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003863",
+        "second_dialogue_id": "lccc-train-00008570"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00003063",
+        "second_dialogue_id": "lccc-train-00016205"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00000483",
+        "second_dialogue_id": "lccc-train-00001817"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00003490",
+        "second_dialogue_id": "lccc-train-00023167"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00006889",
+        "second_dialogue_id": "lccc-train-00006885"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00006627",
+        "second_dialogue_id": "lccc-train-00007924"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00005705",
+        "second_dialogue_id": "lccc-train-00012916"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00002131",
+        "second_dialogue_id": "lccc-train-00022244"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00002991",
+        "second_dialogue_id": "lccc-train-00012189"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00003226",
+        "second_dialogue_id": "lccc-train-00004378"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00000398",
+        "second_dialogue_id": "lccc-train-00023354"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00002049",
+        "second_dialogue_id": "lccc-train-00008099"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00000430",
+        "second_dialogue_id": "lccc-train-00010348"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00001743",
+        "second_dialogue_id": "lccc-train-00004547"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00002553",
+        "second_dialogue_id": "lccc-train-00009522"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000101",
+        "second_dialogue_id": "lccc-train-00000645"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000101",
+        "second_dialogue_id": "lccc-train-00009697"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00003080",
+        "second_dialogue_id": "lccc-train-00015073"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00000626",
+        "second_dialogue_id": "lccc-train-00012936"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00001292",
+        "second_dialogue_id": "lccc-train-00021197"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000060",
+        "second_dialogue_id": "lccc-train-00007029"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000060",
+        "second_dialogue_id": "lccc-train-00001835"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00006647",
+        "second_dialogue_id": "lccc-train-00001626"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00001046",
+        "second_dialogue_id": "lccc-train-00006098"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00003191",
+        "second_dialogue_id": "lccc-train-00019964"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000758",
+        "second_dialogue_id": "lccc-train-00008260"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00000245",
+        "second_dialogue_id": "lccc-train-00012973"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00002029",
+        "second_dialogue_id": "lccc-train-00010583"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003875",
+        "second_dialogue_id": "lccc-train-00002656"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00005781",
+        "second_dialogue_id": "lccc-train-00023304"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00002402",
+        "second_dialogue_id": "lccc-train-00009825"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00006827",
+        "second_dialogue_id": "lccc-train-00007189"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00002924",
+        "second_dialogue_id": "lccc-train-00004435"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00001435",
+        "second_dialogue_id": "lccc-train-00014053"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00001056",
+        "second_dialogue_id": "lccc-train-00015464"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00005071",
+        "second_dialogue_id": "lccc-train-00002277"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00001495",
+        "second_dialogue_id": "lccc-train-00016269"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00002499",
+        "second_dialogue_id": "lccc-train-00009291"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003836",
+        "second_dialogue_id": "lccc-train-00010614"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000315",
+        "second_dialogue_id": "lccc-train-00010047"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00006102",
+        "second_dialogue_id": "lccc-train-00004044"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00002377",
+        "second_dialogue_id": "lccc-train-00011926"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000445",
+        "second_dialogue_id": "lccc-train-00011267"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00002984",
+        "second_dialogue_id": "lccc-train-00003431"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00001168",
+        "second_dialogue_id": "lccc-train-00010121"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000047",
+        "second_dialogue_id": "lccc-train-00000663"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00006975",
+        "second_dialogue_id": "lccc-train-00007748"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00001084",
+        "second_dialogue_id": "lccc-train-00006490"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00000922",
+        "second_dialogue_id": "lccc-train-00000653"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00001516",
+        "second_dialogue_id": "lccc-train-00000672"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003227",
+        "second_dialogue_id": "lccc-train-00012068"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00002671",
+        "second_dialogue_id": "lccc-train-00013860"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00000540",
+        "second_dialogue_id": "lccc-train-00002034"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00000376",
+        "second_dialogue_id": "lccc-train-00018370"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000089",
+        "second_dialogue_id": "lccc-train-00011810"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00000337",
+        "second_dialogue_id": "lccc-train-00010262"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003950",
+        "second_dialogue_id": "lccc-train-00012788"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00000106",
+        "second_dialogue_id": "lccc-train-00006162"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00002815",
+        "second_dialogue_id": "lccc-train-00005264"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003040",
+        "second_dialogue_id": "lccc-train-00007350"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00006702",
+        "second_dialogue_id": "lccc-train-00013996"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00002705",
+        "second_dialogue_id": "lccc-train-00007572"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00002208",
+        "second_dialogue_id": "lccc-train-00012844"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00001730",
+        "second_dialogue_id": "lccc-train-00000750"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00001219",
+        "second_dialogue_id": "lccc-train-00018554"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00000623",
+        "second_dialogue_id": "lccc-train-00005595"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00006175",
+        "second_dialogue_id": "lccc-train-00009231"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-test-00000980",
+        "second_dialogue_id": "lccc-train-00013546"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00006394",
+        "second_dialogue_id": "lccc-train-00001522"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00004361",
+        "second_dialogue_id": "lccc-train-00017792"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00004664",
+        "second_dialogue_id": "lccc-train-00020828"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00005700",
+        "second_dialogue_id": "lccc-train-00002846"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00003660",
+        "second_dialogue_id": "lccc-train-00000831"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-dev-00006738",
+        "second_dialogue_id": "lccc-train-00003637"
+      },
+      {
+        "kind": "normalized_duplicate",
+        "first_dialogue_id": "lccc-dev-00002395",
+        "second_dialogue_id": "lccc-train-00001825"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000717",
+        "second_dialogue_id": "lccc-train-00006654"
+      },
+      {
+        "kind": "normalized_proper_prefix",
+        "first_dialogue_id": "lccc-test-00000717",
+        "second_dialogue_id": "lccc-train-00009471"
+      }
+    ],
+    "bound_groups": [
+      {
+        "group_id": "group-9da6318ee986b893",
+        "dialogue_ids": [
+          "lccc-dev-00000106",
+          "lccc-train-00006162"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-0f34f5b2500d9b65",
+        "dialogue_ids": [
+          "lccc-dev-00000245",
+          "lccc-train-00012973"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-199d322726a42431",
+        "dialogue_ids": [
+          "lccc-dev-00000337",
+          "lccc-train-00010262"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-787c799f1ec4e6ff",
+        "dialogue_ids": [
+          "lccc-dev-00000376",
+          "lccc-train-00018370"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-374e95e21b4eb288",
+        "dialogue_ids": [
+          "lccc-dev-00000430",
+          "lccc-train-00010348"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-155c6ed9540950cd",
+        "dialogue_ids": [
+          "lccc-dev-00000483",
+          "lccc-train-00001817"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-37ad88d0ce871fb8",
+        "dialogue_ids": [
+          "lccc-dev-00000626",
+          "lccc-train-00012936"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-b859f2d645eb9ea2",
+        "dialogue_ids": [
+          "lccc-dev-00001056",
+          "lccc-train-00015464"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-671eeca3eaa1c108",
+        "dialogue_ids": [
+          "lccc-dev-00001075",
+          "lccc-train-00019658"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-3d0a234f458e7f2c",
+        "dialogue_ids": [
+          "lccc-dev-00001084",
+          "lccc-train-00006490"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-97d117d9d1ffe292",
+        "dialogue_ids": [
+          "lccc-dev-00001168",
+          "lccc-train-00010121"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-1e866c7b78327fdc",
+        "dialogue_ids": [
+          "lccc-dev-00001219",
+          "lccc-train-00018554"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-0056a752c9834625",
+        "dialogue_ids": [
+          "lccc-dev-00001292",
+          "lccc-train-00021197"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-154a8856140904bd",
+        "dialogue_ids": [
+          "lccc-dev-00001435",
+          "lccc-train-00014053"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-f99b41d720217f1d",
+        "dialogue_ids": [
+          "lccc-dev-00001495",
+          "lccc-train-00016269"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-fadab7cd89d27bd7",
+        "dialogue_ids": [
+          "lccc-dev-00001622",
+          "lccc-train-00003108"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d36edac8af951832",
+        "dialogue_ids": [
+          "lccc-dev-00001730",
+          "lccc-train-00000750"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-f9ce01ee1f397de4",
+        "dialogue_ids": [
+          "lccc-dev-00001743",
+          "lccc-train-00004547"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-9eb3b8a5e20a4cdc",
+        "dialogue_ids": [
+          "lccc-dev-00002049",
+          "lccc-train-00008099"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-56a7bba48a2805fa",
+        "dialogue_ids": [
+          "lccc-dev-00002131",
+          "lccc-train-00022244"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-3b2102b5292cb04f",
+        "dialogue_ids": [
+          "lccc-dev-00002395",
+          "lccc-train-00001825"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-5ade2c10e2e1b58a",
+        "dialogue_ids": [
+          "lccc-dev-00002447",
+          "lccc-train-00001515"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-73779187718fb1ff",
+        "dialogue_ids": [
+          "lccc-dev-00002511",
+          "lccc-train-00021976"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-6ab29e79b0d9c949",
+        "dialogue_ids": [
+          "lccc-dev-00002553",
+          "lccc-train-00009522"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-c5a96a5e2e6381c5",
+        "dialogue_ids": [
+          "lccc-dev-00002563",
+          "lccc-train-00011136"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-0a8765248af8cae9",
+        "dialogue_ids": [
+          "lccc-dev-00002924",
+          "lccc-train-00004435"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-b734e530fe905e14",
+        "dialogue_ids": [
+          "lccc-dev-00003015",
+          "lccc-train-00010127"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-ab6d1ca180697f0b",
+        "dialogue_ids": [
+          "lccc-dev-00003040",
+          "lccc-train-00007350"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d0a5555f0d0fdf2c",
+        "dialogue_ids": [
+          "lccc-dev-00003063",
+          "lccc-train-00016205"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-a0205e4adb569750",
+        "dialogue_ids": [
+          "lccc-dev-00003080",
+          "lccc-train-00015073"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d352ce3e5ee14da9",
+        "dialogue_ids": [
+          "lccc-dev-00003222",
+          "lccc-train-00002586"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-7e771928ee4a9c0b",
+        "dialogue_ids": [
+          "lccc-dev-00003227",
+          "lccc-train-00012068"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-ec2a8ae4ab517db0",
+        "dialogue_ids": [
+          "lccc-dev-00003490",
+          "lccc-train-00023167"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-0134245853500e33",
+        "dialogue_ids": [
+          "lccc-dev-00003660",
+          "lccc-train-00000831"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d907c126dc660b15",
+        "dialogue_ids": [
+          "lccc-dev-00003836",
+          "lccc-train-00010614"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-5f80a8d06411a773",
+        "dialogue_ids": [
+          "lccc-dev-00003863",
+          "lccc-train-00008570"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-b14024d8b150e2c9",
+        "dialogue_ids": [
+          "lccc-dev-00003875",
+          "lccc-train-00002656"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-76daec6eb735d4d3",
+        "dialogue_ids": [
+          "lccc-dev-00003950",
+          "lccc-train-00012788"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-cbf04e6d0486647a",
+        "dialogue_ids": [
+          "lccc-dev-00004233",
+          "lccc-train-00004521"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-048c5a002fa2e61c",
+        "dialogue_ids": [
+          "lccc-dev-00004361",
+          "lccc-train-00017792"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-58a3bdd53cf4916e",
+        "dialogue_ids": [
+          "lccc-dev-00004664",
+          "lccc-train-00020828"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-788d407a5df1bb83",
+        "dialogue_ids": [
+          "lccc-dev-00005071",
+          "lccc-train-00002277"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-6362e43472bfe0a2",
+        "dialogue_ids": [
+          "lccc-dev-00005578",
+          "lccc-train-00012184"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-8d386b5c4b63bf1a",
+        "dialogue_ids": [
+          "lccc-dev-00005700",
+          "lccc-train-00002846"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-cd1258e847665b39",
+        "dialogue_ids": [
+          "lccc-dev-00005705",
+          "lccc-train-00012916"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-1f8b0939be8dfaa5",
+        "dialogue_ids": [
+          "lccc-dev-00005781",
+          "lccc-train-00023304"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-95d8eaf0abfb3aa3",
+        "dialogue_ids": [
+          "lccc-dev-00006092",
+          "lccc-train-00022724"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d09d1bd33e4544e2",
+        "dialogue_ids": [
+          "lccc-dev-00006102",
+          "lccc-train-00004044"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-445f4775e9c8b9ae",
+        "dialogue_ids": [
+          "lccc-dev-00006175",
+          "lccc-train-00009231"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-83a09dbf6c10ef1c",
+        "dialogue_ids": [
+          "lccc-dev-00006380",
+          "lccc-train-00011279"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-f43f795e8d0fa081",
+        "dialogue_ids": [
+          "lccc-dev-00006394",
+          "lccc-train-00001522"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-939e0fc3ab95be08",
+        "dialogue_ids": [
+          "lccc-dev-00006627",
+          "lccc-train-00007924"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d95a60302862fa5a",
+        "dialogue_ids": [
+          "lccc-dev-00006647",
+          "lccc-train-00001626"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-3a73fef2ef7b853c",
+        "dialogue_ids": [
+          "lccc-dev-00006702",
+          "lccc-train-00013996"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-9a5c08b9be82c91f",
+        "dialogue_ids": [
+          "lccc-dev-00006738",
+          "lccc-train-00003637"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-2a95278bbdf4d3fb",
+        "dialogue_ids": [
+          "lccc-dev-00006764",
+          "lccc-train-00010065"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-df20acd646892080",
+        "dialogue_ids": [
+          "lccc-dev-00006827",
+          "lccc-train-00007189"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-5e9bb0bbbd980d2e",
+        "dialogue_ids": [
+          "lccc-dev-00006841",
+          "lccc-train-00005935"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-a28d5ba2d6f50e96",
+        "dialogue_ids": [
+          "lccc-dev-00006889",
+          "lccc-train-00006885"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-c7d0b53c88184a0a",
+        "dialogue_ids": [
+          "lccc-dev-00006975",
+          "lccc-train-00007748"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-9cfabee4f86f042c",
+        "dialogue_ids": [
+          "lccc-test-00000047",
+          "lccc-train-00000663"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-72e4000484d094ff",
+        "dialogue_ids": [
+          "lccc-test-00000060",
+          "lccc-train-00001835",
+          "lccc-train-00007029"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-0ac4e7d03518dbeb",
+        "dialogue_ids": [
+          "lccc-test-00000089",
+          "lccc-train-00011810"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-7df9ccf20963f8a8",
+        "dialogue_ids": [
+          "lccc-test-00000101",
+          "lccc-train-00000645",
+          "lccc-train-00009697"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d6042ceca360514a",
+        "dialogue_ids": [
+          "lccc-test-00000315",
+          "lccc-train-00010047"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d85812d17a4062fa",
+        "dialogue_ids": [
+          "lccc-test-00000386",
+          "lccc-train-00010430"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-52e35115308240f4",
+        "dialogue_ids": [
+          "lccc-test-00000398",
+          "lccc-train-00023354"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-fa2f546a2bc5b383",
+        "dialogue_ids": [
+          "lccc-test-00000445",
+          "lccc-train-00011267"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-00a050a1045f6abb",
+        "dialogue_ids": [
+          "lccc-test-00000517",
+          "lccc-train-00017111"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-92e6c5e4e1f9d891",
+        "dialogue_ids": [
+          "lccc-test-00000540",
+          "lccc-train-00002034"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-b869ea621ad1fc27",
+        "dialogue_ids": [
+          "lccc-test-00000623",
+          "lccc-train-00005595"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-db46e5806d50f743",
+        "dialogue_ids": [
+          "lccc-test-00000668",
+          "lccc-train-00020323"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-31da23e75899cd33",
+        "dialogue_ids": [
+          "lccc-test-00000680",
+          "lccc-train-00000047"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-fc1f64315711b601",
+        "dialogue_ids": [
+          "lccc-test-00000717",
+          "lccc-train-00006654",
+          "lccc-train-00009471"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-f70f90860ce449d1",
+        "dialogue_ids": [
+          "lccc-test-00000758",
+          "lccc-train-00008260"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-196815d4996a8035",
+        "dialogue_ids": [
+          "lccc-test-00000922",
+          "lccc-train-00000653"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-a7652ab6adb0e8eb",
+        "dialogue_ids": [
+          "lccc-test-00000980",
+          "lccc-train-00013546"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-c252e73e9fdcad16",
+        "dialogue_ids": [
+          "lccc-test-00001046",
+          "lccc-train-00006098"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-8234ecef40758059",
+        "dialogue_ids": [
+          "lccc-test-00001148",
+          "lccc-train-00000222",
+          "lccc-train-00007501"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-4434d8f3da5a6563",
+        "dialogue_ids": [
+          "lccc-test-00001259",
+          "lccc-train-00002520"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-46844d0aa3722bd3",
+        "dialogue_ids": [
+          "lccc-test-00001516",
+          "lccc-train-00000672"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-784ecb204437d411",
+        "dialogue_ids": [
+          "lccc-test-00001528",
+          "lccc-train-00008411"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-e466f0d2e797f08b",
+        "dialogue_ids": [
+          "lccc-test-00002029",
+          "lccc-train-00010583"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-aa75c7b282e4086d",
+        "dialogue_ids": [
+          "lccc-test-00002208",
+          "lccc-train-00012844"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-8a1719a75fb0ab1c",
+        "dialogue_ids": [
+          "lccc-test-00002213",
+          "lccc-train-00009546"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-74d4029d98421819",
+        "dialogue_ids": [
+          "lccc-test-00002377",
+          "lccc-train-00011926"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-9dc77018a4ac37bd",
+        "dialogue_ids": [
+          "lccc-test-00002402",
+          "lccc-train-00009825"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-4f3cfa8d5bdef7a1",
+        "dialogue_ids": [
+          "lccc-test-00002499",
+          "lccc-train-00009291"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-2dcec1e276b9e474",
+        "dialogue_ids": [
+          "lccc-test-00002671",
+          "lccc-train-00013860"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-76f32024c2c67dd3",
+        "dialogue_ids": [
+          "lccc-test-00002705",
+          "lccc-train-00007572"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-0e343a0cc66eaa02",
+        "dialogue_ids": [
+          "lccc-test-00002815",
+          "lccc-train-00005264"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-8cf8c8da3757f004",
+        "dialogue_ids": [
+          "lccc-test-00002948",
+          "lccc-train-00012709"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-d44ca5989bb18a26",
+        "dialogue_ids": [
+          "lccc-test-00002984",
+          "lccc-train-00003431"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-6e2faaa6295af2e4",
+        "dialogue_ids": [
+          "lccc-test-00002991",
+          "lccc-train-00012189"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-0121ee1dffa3de63",
+        "dialogue_ids": [
+          "lccc-test-00003191",
+          "lccc-train-00019964"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-4e2ba6b68c70c5fe",
+        "dialogue_ids": [
+          "lccc-test-00003211",
+          "lccc-train-00000612"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-4de85a3a8ba10ffd",
+        "dialogue_ids": [
+          "lccc-test-00003226",
+          "lccc-train-00004378"
+        ],
+        "split": "train"
+      },
+      {
+        "group_id": "group-3a02f488e6a95dae",
+        "dialogue_ids": [
+          "lccc-test-00003455",
+          "lccc-train-00006201"
+        ],
+        "split": "train"
+      }
+    ]
+  },
+  "leakage_audit": {
+    "cross_split_dialogue_ids": [],
+    "cross_split_normalized_duplicate_or_prefix_relations": [],
+    "all_dialogues_preserved": true,
+    "all_four_annotators_preserved": true,
+    "passed": true
+  },
+  "output_files": {
+    "dialogues/train.jsonl": {
+      "sha256": "2d81cca3c24738f8431bf00cebced23b074d3243ce434d62088fb1913858b605",
+      "records": 27547,
+      "bytes": 134695224
+    },
+    "train.jsonl": {
+      "sha256": "a0453420202243c2ec96007c4efbb4ceb917f3543a0dcc877807517a1c044838",
+      "records": 52379,
+      "bytes": 208145932
+    },
+    "annotation_rows/train.jsonl": {
+      "sha256": "959ad5f5f2f902c7e568c05dbb0af76c6f2bb0821f2224c261ec6b452bb43955",
+      "records": 79926,
+      "bytes": 152891604
+    },
+    "dialogues/dev.jsonl": {
+      "sha256": "0fedfd57b732d295669a0a28a346f09da7831f9382a513ea011e3bbff124a774",
+      "records": 3443,
+      "bytes": 16600457
+    },
+    "dev.jsonl": {
+      "sha256": "55afd384165600fc1d1c79856219c3a762aa22068b7b7ba699f0b949df8b933a",
+      "records": 6399,
+      "bytes": 25389170
+    },
+    "annotation_rows/dev.jsonl": {
+      "sha256": "f0e2a08f78bd9045ce2b79cd2bdea1db44b23080d39ee110e02333d87400e51e",
+      "records": 9842,
+      "bytes": 18810164
+    },
+    "dialogues/test.jsonl": {
+      "sha256": "307f017dd294f381be8bcfce96d5b75d83de02933dfb5b65b5ef8eb4f54acbec",
+      "records": 3443,
+      "bytes": 16800087
+    },
+    "test.jsonl": {
+      "sha256": "61bc9b7cbb7d1596256608b05eb66426e4e6beff578029cd885ea9966a87592c",
+      "records": 6534,
+      "bytes": 25922132
+    },
+    "annotation_rows/test.jsonl": {
+      "sha256": "121e2d90eda418a968ce1daeb5cda6025f2b6c950d8291d17eed872c59b99359",
+      "records": 9977,
+      "bytes": 19058788
+    }
+  }
+}

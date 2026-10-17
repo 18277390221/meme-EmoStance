@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "source_directory": "/home/aida102/hks/dataset/v.1.0.0/data",
+  "output_file": "/home/aida102/hks/dataset/v1.0.0/cleaned_dialogues.jsonl",
+  "dialogues": 11092,
+  "turns": 29995,
+  "annotations": 119980,
+  "annotators": [
+    "paper1",
+    "paper2",
+    "paper3",
+    "paper4"
+  ],
+  "confidence_range": [
+    1,
+    5
+  ],
+  "source_split_counts": {
+    "train": {
+      "dialogues": 345,
+      "turns": 1311
+    },
+    "dev": {
+      "dialogues": 7102,
+      "turns": 18804
+    },
+    "test": {
+      "dialogues": 3645,
+      "turns": 9880
+    }
+  },
+  "distinct_meme_ids": 166,
+  "text_normalization": "existing normalize_text: join Chinese character spacing and digit spacing, preserve Latin word spaces",
+  "role_assignment": "alternating A/B by zero-based turn_id; original source contains ordered text turns",
+  "input_sha256": {
+    "dialogues_pool.jsonl": "48b3dcbed44a1d51ee506c5f5016f9fc04f98adb5b3a3b4f66c3ef989264a5aa",
+    "meme_catalog.jsonl": "1e2fc302cfb4640e0cb4943005bde022fa6dedae7e91388f5c875566e822de33",
+    "annotations_dialogue_pool_paper1.jsonl": "2b302a17843af1f02872183f9ac3ccf6f927af8a57251e038ef61b2349d93081",
+    "annotations_dialogue_pool_paper2.jsonl": "1f5f41ca50fa92292f8ceed39cf9f805d30b1abd8617a65c30627e9f35300f72",
+    "annotations_dialogue_pool_paper3.jsonl": "111eba1021933bbea4dfa67f16ce663655c8c2421aed549db610f710a9dbb8b0",
+    "annotations_dialogue_pool_paper4.jsonl": "e5182ff2d8a681c8f2bdfbc118a9b44355349fe8b589627f5528c6a8cf58792f"
+  },
+  "output_sha256": "b64cb5d780d519107e925f5654f6023bfab7a4561a1940d9ec3798b553b3f993",
+  "output_bytes": 51542052
+}

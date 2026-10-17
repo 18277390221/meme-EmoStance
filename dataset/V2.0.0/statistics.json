@@ -1,0 +1,47 @@
+{
+  "status": "cleaned",
+  "dialogues": 34433,
+  "turns": 99745,
+  "source_split": {
+    "dev": {
+      "dialogues": 7112,
+      "turns": 18831
+    },
+    "test": {
+      "dialogues": 3648,
+      "turns": 9886
+    },
+    "train": {
+      "dialogues": 23673,
+      "turns": 71028
+    }
+  },
+  "catalog_meme_ids": 166,
+  "used_meme_ids": 166,
+  "new_dialogue_rows_per_annotator": {
+    "paper1": 34433,
+    "paper2": 34433,
+    "paper3": 34433,
+    "paper4": 34433
+  },
+  "new_turn_annotations_per_annotator": {
+    "paper1": 99745,
+    "paper2": 99745,
+    "paper3": 99745,
+    "paper4": 99745
+  },
+  "new_turn_annotations_total": 398980,
+  "legacy_rows_per_annotator": {
+    "paper1": 0,
+    "paper2": 0,
+    "paper3": 0,
+    "paper4": 0
+  },
+  "confidence_distribution_new_only": {
+    "1": 53,
+    "2": 9536,
+    "3": 200868,
+    "4": 183372,
+    "5": 5151
+  }
+}

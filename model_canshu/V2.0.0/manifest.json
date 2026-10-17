@@ -1,0 +1,329 @@
+{
+  "format_version": 2,
+  "status": "complete",
+  "method": "EmoStance Chinese meme adaptation",
+  "config": {
+    "seed": 42,
+    "run_dir": "/home/aida102/hks/model_canshu/V2.0.0",
+    "data_dir": "/home/aida102/hks/model_canshu/V2.0.0/data",
+    "planner_model_path": "/home/aida102/emoji/deberta-v3-base",
+    "base_model_path": "/home/aida102/emoji/Mistral-7B-Instruct-v0.3",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "vector_dim": 256,
+    "centroid_shrinkage_tau": 50.0,
+    "knn_k": 8,
+    "leiden_resolution": 1.6,
+    "boundary_absolute_threshold": 0.7,
+    "boundary_relative_threshold": 0.85,
+    "boundary_max_clusters": 4,
+    "soft_membership_temperature": 0.7,
+    "planner_epochs": 3,
+    "planner_batch_size": 8,
+    "planner_max_length": 320,
+    "planner_learning_rate": 1.5e-05,
+    "prefix_epochs": 1,
+    "prefix_length": 8,
+    "prefix_hidden_dim": 4096,
+    "prefix_learning_rate": 0.0001,
+    "max_prompt_tokens": 384,
+    "max_training_response_tokens": 128,
+    "gradient_checkpointing": true,
+    "generator_runtime_gradient_checkpointing": false,
+    "generator_runtime_checkpoint_interval": 2000,
+    "checkpoint_interval": 500,
+    "log_interval": 100,
+    "do_sample": true,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "max_new_tokens": 64,
+    "no_repeat_ngram_size": 4,
+    "retrieval_metric": "cosine",
+    "idle_timeout": 10.0
+  },
+  "seed": 42,
+  "planner": {
+    "format_version": 1,
+    "method": "EmoStance paper role-aware DeBERTa planner",
+    "status": "complete",
+    "training_signature": "61406705d67c505d2a04ef8afe437e644d412cf632bf2edac64f9dce2455dda3",
+    "train_examples": 52379,
+    "dev_examples": 6399,
+    "epochs": 3,
+    "global_steps": 19644,
+    "best_epoch": 2,
+    "best_dev_target_soft_ce": 1.718874287653722,
+    "checkpoint": "/home/aida102/hks/model/runs/paper_v2/planner/best.pt",
+    "resume_checkpoint": "/home/aida102/hks/model/runs/paper_v2/planner/last.pt",
+    "elapsed_seconds_this_session": 1502.4253088959958
+  },
+  "generator": {
+    "format_version": 1,
+    "status": "complete",
+    "training_signature": "e4a9eddd2012a01b52ca21442e98f4c6f2c510d1e48cebc0c04b00ab431988a7",
+    "method": "emostance_frozen_mistral_continuous_stance_prefix",
+    "base_model_path": "/home/aida102/emoji/Mistral-7B-Instruct-v0.3",
+    "architecture": {
+      "vector_dim": 256,
+      "lm_hidden_size": 4096,
+      "prefix_length": 8,
+      "prefix_hidden_dim": 4096
+    },
+    "train_examples": 52379,
+    "epochs_requested": 1,
+    "epochs_complete": 1,
+    "global_step": 52379,
+    "history": [
+      {
+        "epoch": 1,
+        "train_reply_eos_ce": 2.4936428265794213,
+        "steps": 52379
+      }
+    ],
+    "best_metric": "train_epoch_reply_eos_ce",
+    "best_loss": 2.4936428265794213,
+    "last_checkpoint": "/home/aida102/hks/model/runs/paper_v2/generator/last.pt",
+    "best_checkpoint": "/home/aida102/hks/model/runs/paper_v2/generator/best.pt",
+    "config": {
+      "seed": 42,
+      "run_dir": "/home/aida102/hks/model/runs/paper_v2",
+      "data_dir": "/home/aida102/hks/data_spilt/V2.0.0",
+      "planner_model_path": "/home/aida102/emoji/deberta-v3-base",
+      "base_model_path": "/home/aida102/emoji/Mistral-7B-Instruct-v0.3",
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "vector_dim": 256,
+      "centroid_shrinkage_tau": 50.0,
+      "knn_k": 8,
+      "leiden_resolution": 1.6,
+      "boundary_absolute_threshold": 0.7,
+      "boundary_relative_threshold": 0.85,
+      "boundary_max_clusters": 4,
+      "soft_membership_temperature": 0.7,
+      "planner_epochs": 3,
+      "planner_batch_size": 8,
+      "planner_max_length": 320,
+      "planner_learning_rate": 1.5e-05,
+      "prefix_epochs": 1,
+      "prefix_length": 8,
+      "prefix_hidden_dim": 4096,
+      "prefix_learning_rate": 0.0001,
+      "max_prompt_tokens": 384,
+      "max_training_response_tokens": 128,
+      "gradient_checkpointing": true,
+      "generator_runtime_gradient_checkpointing": false,
+      "generator_runtime_checkpoint_interval": 2000,
+      "checkpoint_interval": 500,
+      "log_interval": 100,
+      "do_sample": true,
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "max_new_tokens": 64,
+      "no_repeat_ngram_size": 4,
+      "retrieval_metric": "cosine",
+      "idle_timeout": 10.0
+    },
+    "frozen_lm": true,
+    "selection_uses_test": false,
+    "truncation_side": "left",
+    "loss_tokens": "response content plus EOS; prompt/prefix masked",
+    "base_weights_copied": false,
+    "gradient_checkpointing_enabled": false,
+    "runtime_checkpoint_interval": 2000
+  },
+  "graph": {
+    "training_utterances": 79926,
+    "training_samples": 52379,
+    "meme_count": 166,
+    "vector_dim": 256,
+    "num_clusters": 8,
+    "cluster_sizes": [
+      20,
+      22,
+      24,
+      28,
+      25,
+      25,
+      10,
+      12
+    ],
+    "soft_membership_memes": 9,
+    "zero_feature_utterances": 0,
+    "algorithm": "leidenalg.RBConfigurationVertexPartition",
+    "resolution": 1.6,
+    "fit_splits": [
+      "train"
+    ],
+    "feature_template": "Chinese character/Latin word unigrams + adjacent bigrams; signed hashed TF-IDF",
+    "meme_descriptions_used": false,
+    "annotation_reasons_used": false
+  },
+  "index": {
+    "split": "train",
+    "responses": 52379,
+    "vector_dim": 256,
+    "vectors": "full training history plus reply -> source soft distribution @ training source prototypes; same encoder as generated queries",
+    "selection": "meme id with highest confidence-weighted annotator vote; lexical id breaks ties",
+    "train_file_sha256": "a0453420202243c2ec96007c4efbb4ceb917f3543a0dcc877807517a1c044838",
+    "planner_checkpoint_sha256": "2907d3a5bede8575d46ee64342dc74e8a331125044883e8ba70fc411acf3ee58",
+    "space_sha256": "c17058d70d6d0a005d00825b4a951861156f6db327dc88b1aeecf21709ef2397"
+  },
+  "evaluation_file": "/home/aida102/hks/model/runs/paper_v2/evaluation.json",
+  "evaluation_summary": {
+    "dev": {
+      "soft_ce": 1.7188799325869066,
+      "jsd": 0.3016764405098923,
+      "overlap": 0.389090299063813,
+      "examples": 6399,
+      "target_vector_mse": 2.175153962051405e-05,
+      "majority_cluster_accuracy": 0.35427410532895764,
+      "train_prior_baseline": {
+        "soft_ce": 1.799220695893362,
+        "jsd": 0.32233526826791287,
+        "overlap": 0.3563847199568942
+      }
+    },
+    "test": {
+      "soft_ce": 1.7246660757206327,
+      "jsd": 0.3009613446327568,
+      "overlap": 0.39098504334286577,
+      "examples": 6534,
+      "target_vector_mse": 2.1996797747330137e-05,
+      "majority_cluster_accuracy": 0.3533823079277625,
+      "train_prior_baseline": {
+        "soft_ce": 1.8017894095141795,
+        "jsd": 0.32122349496289504,
+        "overlap": 0.35886187068053693
+      }
+    }
+  },
+  "inference": {
+    "num_candidates": 4,
+    "reranking": "minimum predicted-control soft cross entropy",
+    "no_repeat_ngram_size": 4,
+    "meme_selection": "nearest training response to generated reply source-distribution @ source-prototypes vector",
+    "idle_timeout_seconds": 10.0
+  },
+  "original_emostance_modified": false,
+  "base_model_weights_copied": false,
+  "adaptations": [
+    "Chinese character/Latin word TF-IDF instead of English-only regex",
+    "user-selected grouped 80/10/10 split; seed42",
+    "source-entropy gate from paper, rather than target-entropy gate in released code",
+    "mean MSE vector auxiliary loss follows released implementation rather than paper L2 sum notation",
+    "Leiden discovers 8 regions for this dataset",
+    "training-response meme retrieval and ten-second conversation reset added for application"
+  ],
+  "final_smoke": {
+    "format_version": 1,
+    "status": "passed",
+    "preview": false,
+    "purpose": "Completed-model engineering verification, not a conversational-quality assessment",
+    "seed": 42,
+    "training_or_optimizer_steps": 0,
+    "dev_or_test_samples_read": 0,
+    "expected_candidates_per_request": 4,
+    "results": [
+      {
+        "arrival_seconds": 0.0,
+        "input": "今天终于完成任务了，特别开心！",
+        "reply": "抱歉我还没有完成任务",
+        "meme_id": "meme-0154",
+        "history_length": 1,
+        "actual_messages": [
+          {
+            "role": "user",
+            "content": "今天终于完成任务了，特别开心！"
+          }
+        ],
+        "generated_candidates": 4,
+        "elapsed_seconds": 2.0405786159681156
+      },
+      {
+        "arrival_seconds": 4.0,
+        "input": "最近有点难过，想找人聊聊。",
+        "reply": "我在，谈谈吧",
+        "meme_id": "meme-0117",
+        "history_length": 3,
+        "actual_messages": [
+          {
+            "role": "user",
+            "content": "今天终于完成任务了，特别开心！"
+          },
+          {
+            "role": "assistant",
+            "content": "抱歉我还没有完成任务"
+          },
+          {
+            "role": "user",
+            "content": "最近有点难过，想找人聊聊。"
+          }
+        ],
+        "generated_candidates": 4,
+        "elapsed_seconds": 2.004504833021201
+      },
+      {
+        "arrival_seconds": 14.0,
+        "input": "你好，你在做什么？",
+        "reply": "不知道，就在家里呆着",
+        "meme_id": "meme-0143",
+        "history_length": 1,
+        "actual_messages": [
+          {
+            "role": "user",
+            "content": "你好，你在做什么？"
+          }
+        ],
+        "generated_candidates": 4,
+        "elapsed_seconds": 1.4029030150268227
+      }
+    ],
+    "base_model_frozen": true,
+    "run_dir": "/home/aida102/hks/model/runs/paper_v2",
+    "generator_checkpoint_global_step": 52379,
+    "legal_meme_count": 166,
+    "actual_history_lengths": [
+      1,
+      3,
+      1
+    ],
+    "ten_second_reset_verified": true,
+    "http": {
+      "bind_host": "127.0.0.1",
+      "ephemeral_port": 44719,
+      "health": {
+        "status": "ok"
+      },
+      "chat": {
+        "reply": "你好，很高兴见到你",
+        "meme_id": "meme-0117"
+      },
+      "chat_exact_fields_verified": true,
+      "generated_candidates": 4,
+      "reset": {
+        "status": "reset"
+      },
+      "history_after_reset": []
+    },
+    "total_real_generation_candidates": 16,
+    "elapsed_seconds": 15.389617950073443
+  },
+  "verification_summary": {
+    "status": "passed",
+    "unit_tests": 126,
+    "unit_test_seconds": 2.559,
+    "unit_test_log": "/home/aida102/hks/model/runs/paper_v2/unit_tests.log",
+    "unit_test_log_sha256": "f0660778c8c941f72b4f9c4c8c8ae54d749abdc4646fae9bf934b4feabcf2f28",
+    "unit_test_result": "OK",
+    "runtime_smoke": "final_smoke.json",
+    "runtime_smoke_sha256": "80f570f581755833cc384ae609a8906d5bcb5edda9e53c06422751d0a41f981c",
+    "history_lengths": [
+      1,
+      3,
+      1
+    ],
+    "true_generation_candidates": 16
+  },
+  "archive_version": "V2.0.0",
+  "inference_only": true
+}

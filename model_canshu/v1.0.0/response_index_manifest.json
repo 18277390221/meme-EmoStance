@@ -1,0 +1,10 @@
+{
+  "split": "train",
+  "responses": 15134,
+  "vector_dim": 256,
+  "vectors": "full training history plus reply -> source soft distribution @ training source prototypes; same encoder as generated queries",
+  "selection": "meme id with highest confidence-weighted annotator vote; lexical id breaks ties",
+  "train_file_sha256": "112beb3a5ad30947c8598139e4dcec8094ffc0225c2734731d21cf6b5b1056ff",
+  "planner_checkpoint_sha256": "28b6c7108f376a807f6d38d519136f7281929ff1f886f52ab8d13f16f938cc27",
+  "space_sha256": "789ba44b47d7c51848aeb3a23b3da826f0c3d487d1fd3b334c1e56b9009ce124"
+}

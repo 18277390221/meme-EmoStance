@@ -1,0 +1,2 @@
+# Additional inference-only dependency, alongside the existing Torch/Transformers environment.
+pypinyin==0.55.0

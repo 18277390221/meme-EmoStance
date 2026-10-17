@@ -1,0 +1,87 @@
+{
+  "format_version": 1,
+  "repository_url": "https://github.com/18277390221/meme-EmoStance",
+  "github_max_file_bytes": 104857600,
+  "packed_data": [
+    {
+      "source_path": "dataset/V2.0.0/cleaned_dialogues.jsonl",
+      "packed_path": "model/git_assets/dataset/V2.0.0/cleaned_dialogues.jsonl.gz",
+      "bytes": 165224054,
+      "sha256": "308097c4d2f17088cb63db4c3ab728e53026c41beec4ba770b3c07b4e7d71ee5",
+      "packed_bytes": 28050199,
+      "packed_sha256": "8fa84fd25ccbad99e84c069106f8d3bf9c998de0496a25019cfe6a0c0fd967c4"
+    },
+    {
+      "source_path": "data_spilt/V2.0.0/train.jsonl",
+      "packed_path": "model/git_assets/data_spilt/V2.0.0/train.jsonl.gz",
+      "bytes": 208145932,
+      "sha256": "a0453420202243c2ec96007c4efbb4ceb917f3543a0dcc877807517a1c044838",
+      "packed_bytes": 26556055,
+      "packed_sha256": "e2d21238e4521638e9bafcf486bff76bb6e4e36f9625c6ecbe9037987724a616"
+    },
+    {
+      "source_path": "data_spilt/V2.0.0/dialogues/train.jsonl",
+      "packed_path": "model/git_assets/data_spilt/V2.0.0/dialogues/train.jsonl.gz",
+      "bytes": 134695224,
+      "sha256": "2d81cca3c24738f8431bf00cebced23b074d3243ce434d62088fb1913858b605",
+      "packed_bytes": 22902719,
+      "packed_sha256": "ba3e0b787e9c95272820d588e3889b24c5f845d963d80781907e15657885c979"
+    },
+    {
+      "source_path": "data_spilt/V2.0.0/annotation_rows/train.jsonl",
+      "packed_path": "model/git_assets/data_spilt/V2.0.0/annotation_rows/train.jsonl.gz",
+      "bytes": 152891604,
+      "sha256": "959ad5f5f2f902c7e568c05dbb0af76c6f2bb0821f2224c261ec6b452bb43955",
+      "packed_bytes": 24457869,
+      "packed_sha256": "51d38d021aa80a905a7f81347e65136852f7e246c39a73aede27c5859b0a63ae"
+    }
+  ],
+  "duplicate_data": [
+    {
+      "source_path": "data_spilt/v1.0.0/train.jsonl",
+      "target_path": "model_canshu/v1.0.0/data/train.jsonl",
+      "bytes": 61205010,
+      "sha256": "112beb3a5ad30947c8598139e4dcec8094ffc0225c2734731d21cf6b5b1056ff"
+    },
+    {
+      "source_path": "data_spilt/V2.0.0/train.jsonl",
+      "target_path": "model_canshu/V2.0.0/data/train.jsonl",
+      "bytes": 208145932,
+      "sha256": "a0453420202243c2ec96007c4efbb4ceb917f3543a0dcc877807517a1c044838"
+    }
+  ],
+  "excluded_large_weights": [
+    {
+      "path": "model_canshu/v1.0.0/planner/best.pt",
+      "bytes": 740929090,
+      "sha256": "28b6c7108f376a807f6d38d519136f7281929ff1f886f52ab8d13f16f938cc27",
+      "reason": "exceeds the 100 MiB ordinary Git file limit; retained locally"
+    },
+    {
+      "path": "model_canshu/v1.0.0/generator/best.pt",
+      "bytes": 541215096,
+      "sha256": "91fa7b75d3b0d135abef681ef4ca70c3fe68bddd8749af2ef3deefe7ffc7ec1b",
+      "reason": "exceeds the 100 MiB ordinary Git file limit; retained locally"
+    },
+    {
+      "path": "model_canshu/V2.0.0/planner/best.pt",
+      "bytes": 740909058,
+      "sha256": "2907d3a5bede8575d46ee64342dc74e8a331125044883e8ba70fc411acf3ee58",
+      "reason": "exceeds the 100 MiB ordinary Git file limit; retained locally"
+    },
+    {
+      "path": "model_canshu/V2.0.0/generator/best.pt",
+      "bytes": 541215096,
+      "sha256": "29cbc412c4bf7ed3d70d6016c6e541ddcfc3e7233d950f422e762e0187f335c1",
+      "reason": "exceeds the 100 MiB ordinary Git file limit; retained locally"
+    }
+  ],
+  "excluded_categories": [
+    "training runs and optimizer checkpoints",
+    "runtime logs and caches",
+    "raw input archives and intermediate dataset copies",
+    "dataset backups",
+    "local credentials, network configuration and SSH identities",
+    "unrequested Qwen experiment directories"
+  ]
+}

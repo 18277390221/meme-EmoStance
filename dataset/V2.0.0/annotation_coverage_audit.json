@@ -1,0 +1,27 @@
+{
+  "status": "cleaned",
+  "expected_annotators": [
+    "paper1",
+    "paper2",
+    "paper3",
+    "paper4"
+  ],
+  "total_dialogues": 34433,
+  "total_turns": 99745,
+  "dialogue_coverage": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 34433
+  },
+  "turn_coverage": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 99745
+  },
+  "partial_dialogues": [],
+  "validation_issues": []
+}

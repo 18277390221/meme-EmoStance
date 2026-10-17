@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emostance-meme"
+version = "0.1.0"
+description = "Local Mistral response orientation control and meme retrieval"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24,<3",
+  "torch>=2.6,<3",
+  "transformers>=4.46,<6",
+  "accelerate>=1,<2",
+  "sentencepiece>=0.2,<1",
+  "python-igraph>=0.11,<2",
+  "leidenalg>=0.10,<1"
+]
+
+[project.scripts]
+emostance-meme = "emostance_meme.cli:main"
+emostance-meme-paper = "emostance_meme.paper_pipeline:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

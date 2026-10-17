@@ -1,0 +1,188 @@
+{
+  "status": "passed",
+  "canonical_dialogues": 34433,
+  "canonical_turns": 99745,
+  "annotations": 398980,
+  "adjacent_samples": 65312,
+  "splits": {
+    "train": {
+      "dialogues": 27547,
+      "turns": 79926,
+      "samples": 52379
+    },
+    "dev": {
+      "dialogues": 3443,
+      "turns": 9842,
+      "samples": 6399
+    },
+    "test": {
+      "dialogues": 3443,
+      "turns": 9977,
+      "samples": 6534
+    }
+  },
+  "verified_manifest_files": 17,
+  "normalized_related_relations": 102,
+  "cross_split_id_or_normalized_relation_leakage": 0,
+  "checks": [
+    "all four annotators; canonical matches normalized source text and all source labels",
+    "all dialogues/turns/samples complete; exact raw prefixes removed",
+    "every history is original full history through source; consecutive N-1 sample count",
+    "every confidence soft label and weight recomputed independently",
+    "all upstream/canonical/export/output SHA256, file sizes and record counts match manifest",
+    "all normalized duplicate/prefix connected groups remain inside one split"
+  ],
+  "sha256_checks": [
+    {
+      "path": "/home/aida102/hks/dataset/V2.0.0/cleaned_dialogues.jsonl",
+      "expected": "308097c4d2f17088cb63db4c3ab728e53026c41beec4ba770b3c07b4e7d71ee5",
+      "actual": "308097c4d2f17088cb63db4c3ab728e53026c41beec4ba770b3c07b4e7d71ee5",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/dataset/V2.0.0/data/dialogues_pool.jsonl",
+      "expected": "8fc5779513cc575536cea3527d9cb8a70d6128c554d43c6a4298a230f7e971a0",
+      "actual": "8fc5779513cc575536cea3527d9cb8a70d6128c554d43c6a4298a230f7e971a0",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/dataset/V2.0.0/data/meme_catalog.jsonl",
+      "expected": "1e2fc302cfb4640e0cb4943005bde022fa6dedae7e91388f5c875566e822de33",
+      "actual": "1e2fc302cfb4640e0cb4943005bde022fa6dedae7e91388f5c875566e822de33",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/dataset/V2.0.0/data/annotations_dialogue_pool_paper1.jsonl",
+      "expected": "7ac9da04b4f4fc07541f32b3e71929663cfaead44c97a9318030ad031dc46827",
+      "actual": "7ac9da04b4f4fc07541f32b3e71929663cfaead44c97a9318030ad031dc46827",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/dataset/V2.0.0/data/annotations_dialogue_pool_paper2.jsonl",
+      "expected": "e204b9322c5734ae07569aa247f90b707d14e0672ab0b7da714e437e46041772",
+      "actual": "e204b9322c5734ae07569aa247f90b707d14e0672ab0b7da714e437e46041772",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/dataset/V2.0.0/data/annotations_dialogue_pool_paper3.jsonl",
+      "expected": "278054d1bf07e3472eef5389cadd2018ad481c0bedb1009ba2246a6909c5c13b",
+      "actual": "278054d1bf07e3472eef5389cadd2018ad481c0bedb1009ba2246a6909c5c13b",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/dataset/V2.0.0/data/annotations_dialogue_pool_paper4.jsonl",
+      "expected": "31ceb2154f2670ace06ea394c5ffebeb8d813878292c0700034216257bb38160",
+      "actual": "31ceb2154f2670ace06ea394c5ffebeb8d813878292c0700034216257bb38160",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/dialogues/train.jsonl",
+      "expected": "2d81cca3c24738f8431bf00cebced23b074d3243ce434d62088fb1913858b605",
+      "actual": "2d81cca3c24738f8431bf00cebced23b074d3243ce434d62088fb1913858b605",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/train.jsonl",
+      "expected": "a0453420202243c2ec96007c4efbb4ceb917f3543a0dcc877807517a1c044838",
+      "actual": "a0453420202243c2ec96007c4efbb4ceb917f3543a0dcc877807517a1c044838",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/annotation_rows/train.jsonl",
+      "expected": "959ad5f5f2f902c7e568c05dbb0af76c6f2bb0821f2224c261ec6b452bb43955",
+      "actual": "959ad5f5f2f902c7e568c05dbb0af76c6f2bb0821f2224c261ec6b452bb43955",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/dialogues/dev.jsonl",
+      "expected": "0fedfd57b732d295669a0a28a346f09da7831f9382a513ea011e3bbff124a774",
+      "actual": "0fedfd57b732d295669a0a28a346f09da7831f9382a513ea011e3bbff124a774",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/dev.jsonl",
+      "expected": "55afd384165600fc1d1c79856219c3a762aa22068b7b7ba699f0b949df8b933a",
+      "actual": "55afd384165600fc1d1c79856219c3a762aa22068b7b7ba699f0b949df8b933a",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/annotation_rows/dev.jsonl",
+      "expected": "f0e2a08f78bd9045ce2b79cd2bdea1db44b23080d39ee110e02333d87400e51e",
+      "actual": "f0e2a08f78bd9045ce2b79cd2bdea1db44b23080d39ee110e02333d87400e51e",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/dialogues/test.jsonl",
+      "expected": "307f017dd294f381be8bcfce96d5b75d83de02933dfb5b65b5ef8eb4f54acbec",
+      "actual": "307f017dd294f381be8bcfce96d5b75d83de02933dfb5b65b5ef8eb4f54acbec",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/test.jsonl",
+      "expected": "61bc9b7cbb7d1596256608b05eb66426e4e6beff578029cd885ea9966a87592c",
+      "actual": "61bc9b7cbb7d1596256608b05eb66426e4e6beff578029cd885ea9966a87592c",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/data_spilt/V2.0.0/annotation_rows/test.jsonl",
+      "expected": "121e2d90eda418a968ce1daeb5cda6025f2b6c950d8291d17eed872c59b99359",
+      "actual": "121e2d90eda418a968ce1daeb5cda6025f2b6c950d8291d17eed872c59b99359",
+      "passed": true
+    },
+    {
+      "path": "/home/aida102/hks/dataset/V2.0.0/cleaned_dialogues.manifest.json",
+      "expected": "1cd774b0aea9927bf168d3def2ecb3b81690fb28dde5ef274ea64912dd6e9aee",
+      "actual": "1cd774b0aea9927bf168d3def2ecb3b81690fb28dde5ef274ea64912dd6e9aee",
+      "passed": true
+    }
+  ],
+  "normalized_duplicate_relations": 46,
+  "normalized_proper_prefix_relations": 56,
+  "full_record_checks": {
+    "canonical_dialogues_vs_cleaned_source": {
+      "checked": 34433,
+      "passed": true
+    },
+    "canonical_text_turns_vs_normalized_source": {
+      "checked": 99745,
+      "passed": true
+    },
+    "source_annotations_preserved_exactly": {
+      "checked": 398980,
+      "passed": true
+    },
+    "output_dialogues_preserved_exactly": {
+      "checked": 34433,
+      "passed": true
+    },
+    "output_turns_and_soft_labels_and_weights": {
+      "checked": 99745,
+      "passed": true
+    },
+    "all_adjacent_samples_and_complete_history": {
+      "checked": 65312,
+      "passed": true
+    },
+    "sample_source_and_target_soft_labels_and_weights": {
+      "checked": 130624,
+      "passed": true
+    },
+    "output_jsonl_hash_byte_record_counts": {
+      "checked": 9,
+      "passed": true
+    },
+    "cross_split_id_overlap": {
+      "count": 0,
+      "passed": true
+    },
+    "cross_split_normalized_duplicate_or_prefix_leakage": {
+      "count": 0,
+      "passed": true
+    },
+    "retained_exact_original_whole_turn_prefixes": {
+      "count": 0,
+      "passed": true
+    }
+  },
+  "method": "Independent Python standard-library validation; no build_paper_splits or make_records imports; all records checked against source files, labels, mathematical formulas, and full turn histories."
+}

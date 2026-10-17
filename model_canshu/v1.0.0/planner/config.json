@@ -1,0 +1,33 @@
+{
+  "planner_model_path": "/home/aida102/emoji/deberta-v3-base",
+  "seed": 42,
+  "epochs": 3,
+  "batch_size": 8,
+  "max_length": 320,
+  "learning_rate": 1.5e-05,
+  "weight_decay": 0.01,
+  "warmup_ratio": 0.06,
+  "role_dim": 32,
+  "dropout": 0.1,
+  "transition_alpha": 0.05,
+  "transition_weight": 0.5,
+  "source_loss_weight": 0.4,
+  "target_loss_weight": 1.0,
+  "text_aux_weight": 0.2,
+  "vector_loss_weight": 0.1,
+  "class_weight_power": 0.25,
+  "checkpoint_steps": 200,
+  "log_steps": 20,
+  "device": "cuda",
+  "training_signature": "4c588facd82d341fcb1a226993661565f4a4f5e11baf6eb8cf393e68521f5916",
+  "num_clusters": 10,
+  "vector_dim": 256,
+  "role_pairs": [
+    "A->B",
+    "B->A",
+    "A->A",
+    "B->B"
+  ],
+  "gate": "(1 - normalized source entropy) * sigmoid(gate)",
+  "confidence_weighting": "confidence-weighted soft labels; no second per-example confidence loss weight"
+}

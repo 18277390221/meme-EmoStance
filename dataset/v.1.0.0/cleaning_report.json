@@ -1,0 +1,256 @@
+{
+  "status": "complete",
+  "rules": [
+    "Keep only dialogues fully annotated by paper1-paper4.",
+    "Delete entire dialogue for malformed labels, visible replacement characters, explicit failure placeholders, or conflicting raw meme/confidence values.",
+    "Do not reject cross-annotator disagreement, valid low confidence, formatting-only raw response differences or reason-only rewrites.",
+    "Remove only the shorter proper-prefix dialogue; retain all longer continuations and equal-length records."
+  ],
+  "before": {
+    "dialogues": 11105,
+    "turns": 30026,
+    "source_split": {
+      "dev": {
+        "dialogues": 7113,
+        "turns": 18830
+      },
+      "test": {
+        "dialogues": 3647,
+        "turns": 9885
+      },
+      "train": {
+        "dialogues": 345,
+        "turns": 1311
+      }
+    },
+    "catalog_meme_ids": 166,
+    "used_meme_ids": 166,
+    "new_dialogue_rows_per_annotator": {
+      "paper1": 11105,
+      "paper2": 11105,
+      "paper3": 11105,
+      "paper4": 11105
+    },
+    "new_turn_annotations_per_annotator": {
+      "paper1": 30026,
+      "paper2": 30026,
+      "paper3": 30026,
+      "paper4": 30026
+    },
+    "new_turn_annotations_total": 120104,
+    "legacy_rows_per_annotator": {
+      "paper1": 9161,
+      "paper2": 9156,
+      "paper3": 9157,
+      "paper4": 9158
+    },
+    "confidence_distribution_new_only": {
+      "1": 32,
+      "2": 3784,
+      "3": 65333,
+      "4": 50017,
+      "5": 938
+    }
+  },
+  "retained_dialogues": 11092,
+  "retained_turns": 29995,
+  "deleted_dialogues": 13,
+  "deletion_categories": {
+    "exact_dialogue_prefix": 13
+  },
+  "invalid_annotation_dialogues": 0,
+  "invalid_issue_categories_by_dialogue": {},
+  "retained_reason_only_rewrites": [
+    "lccc-dev-00000451",
+    "lccc-dev-00000613",
+    "lccc-dev-00001128",
+    "lccc-dev-00004830",
+    "lccc-dev-00005300",
+    "lccc-dev-00006607",
+    "lccc-dev-00006975",
+    "lccc-test-00000469"
+  ],
+  "operation": "remove_exact_dialogue_prefixes",
+  "exact_prefix_pairs": [
+    {
+      "short_dialogue_id": "lccc-dev-00000840",
+      "short_original_id": "lccc-dev-00002371",
+      "short_turns": 3,
+      "long_dialogue_id": "lccc-dev-00000198",
+      "long_original_id": "lccc-dev-00000605",
+      "long_turns": 4,
+      "short_source_split": "dev",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00000970",
+      "short_original_id": "lccc-dev-00002756",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-dev-00001791",
+      "long_original_id": "lccc-dev-00005069",
+      "long_turns": 5,
+      "short_source_split": "dev",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00006800",
+      "short_original_id": "lccc-dev-00019129",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-dev-00001928",
+      "long_original_id": "lccc-dev-00005482",
+      "long_turns": 3,
+      "short_source_split": "dev",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00002692",
+      "short_original_id": "lccc-dev-00007621",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-dev-00002047",
+      "long_original_id": "lccc-dev-00005789",
+      "long_turns": 4,
+      "short_source_split": "dev",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00003923",
+      "short_original_id": "lccc-dev-00011151",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-dev-00002470",
+      "long_original_id": "lccc-dev-00006968",
+      "long_turns": 3,
+      "short_source_split": "dev",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-test-00002051",
+      "short_original_id": "lccc-test-00005658",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-dev-00002577",
+      "long_original_id": "lccc-dev-00007249",
+      "long_turns": 3,
+      "short_source_split": "test",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00004669",
+      "short_original_id": "lccc-dev-00013223",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-dev-00002605",
+      "long_original_id": "lccc-dev-00007366",
+      "long_turns": 3,
+      "short_source_split": "dev",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-test-00001585",
+      "short_original_id": "lccc-test-00004408",
+      "short_turns": 3,
+      "long_dialogue_id": "lccc-dev-00004391",
+      "long_original_id": "lccc-dev-00012415",
+      "long_turns": 5,
+      "short_source_split": "test",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00003821",
+      "short_original_id": "lccc-dev-00010870",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-dev-00004750",
+      "long_original_id": "lccc-dev-00013455",
+      "long_turns": 3,
+      "short_source_split": "dev",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00005503",
+      "short_original_id": "lccc-dev-00015594",
+      "short_turns": 4,
+      "long_dialogue_id": "lccc-dev-00005047",
+      "long_original_id": "lccc-dev-00014243",
+      "long_turns": 5,
+      "short_source_split": "dev",
+      "long_source_split": "dev"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00004344",
+      "short_original_id": "lccc-dev-00012275",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-test-00000696",
+      "long_original_id": "lccc-test-00001897",
+      "long_turns": 3,
+      "short_source_split": "dev",
+      "long_source_split": "test"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00006201",
+      "short_original_id": "lccc-dev-00017559",
+      "short_turns": 3,
+      "long_dialogue_id": "lccc-test-00001514",
+      "long_original_id": "lccc-test-00004201",
+      "long_turns": 4,
+      "short_source_split": "dev",
+      "long_source_split": "test"
+    },
+    {
+      "short_dialogue_id": "lccc-dev-00003473",
+      "short_original_id": "lccc-dev-00009862",
+      "short_turns": 2,
+      "long_dialogue_id": "lccc-test-00002203",
+      "long_original_id": "lccc-test-00006057",
+      "long_turns": 3,
+      "short_source_split": "dev",
+      "long_source_split": "test"
+    }
+  ],
+  "comparison": "Exact original strings, entire turns in order, and strictly fewer turns. No whitespace normalization or fuzzy matching.",
+  "after": {
+    "dialogues": 11092,
+    "turns": 29995,
+    "source_split": {
+      "dev": {
+        "dialogues": 7102,
+        "turns": 18804
+      },
+      "test": {
+        "dialogues": 3645,
+        "turns": 9880
+      },
+      "train": {
+        "dialogues": 345,
+        "turns": 1311
+      }
+    },
+    "catalog_meme_ids": 166,
+    "used_meme_ids": 166,
+    "new_dialogue_rows_per_annotator": {
+      "paper1": 11092,
+      "paper2": 11092,
+      "paper3": 11092,
+      "paper4": 11092
+    },
+    "new_turn_annotations_per_annotator": {
+      "paper1": 29995,
+      "paper2": 29995,
+      "paper3": 29995,
+      "paper4": 29995
+    },
+    "new_turn_annotations_total": 119980,
+    "legacy_rows_per_annotator": {
+      "paper1": 9149,
+      "paper2": 9144,
+      "paper3": 9145,
+      "paper4": 9146
+    },
+    "confidence_distribution_new_only": {
+      "1": 32,
+      "2": 3780,
+      "3": 65273,
+      "4": 49958,
+      "5": 937
+    }
+  },
+  "backup_directory": "/home/aida102/hks/dataset/v.1.0.0/backups/before_prefix_cleaning_20261017_143241_024994",
+  "archive_sha256_unchanged": "5409893d7f43f0d299db402c7c7c9c817c37e5ba34765cd87d878c790690514d",
+  "numbering": "Zero-based 8-digit dialogue IDs within each original source_split; turn IDs and meme IDs unchanged."
+}

@@ -1,0 +1,94 @@
+{
+  "format_version": 1,
+  "status": "passed",
+  "preview": false,
+  "purpose": "Completed-model engineering verification, not a conversational-quality assessment",
+  "seed": 42,
+  "training_or_optimizer_steps": 0,
+  "dev_or_test_samples_read": 0,
+  "expected_candidates_per_request": 4,
+  "results": [
+    {
+      "arrival_seconds": 0.0,
+      "input": "今天终于完成任务了，特别开心！",
+      "reply": "是的，终于完成了，我觉得我们的成绩都不错",
+      "meme_id": "meme-0003",
+      "history_length": 1,
+      "actual_messages": [
+        {
+          "role": "user",
+          "content": "今天终于完成任务了，特别开心！"
+        }
+      ],
+      "generated_candidates": 4,
+      "elapsed_seconds": 2.362876118044369
+    },
+    {
+      "arrival_seconds": 4.0,
+      "input": "最近有点难过，想找人聊聊。",
+      "reply": "哎呀，不要哭，我们一起聊聊吧",
+      "meme_id": "meme-0132",
+      "history_length": 3,
+      "actual_messages": [
+        {
+          "role": "user",
+          "content": "今天终于完成任务了，特别开心！"
+        },
+        {
+          "role": "assistant",
+          "content": "是的，终于完成了，我觉得我们的成绩都不错"
+        },
+        {
+          "role": "user",
+          "content": "最近有点难过，想找人聊聊。"
+        }
+      ],
+      "generated_candidates": 4,
+      "elapsed_seconds": 2.144589925999753
+    },
+    {
+      "arrival_seconds": 14.0,
+      "input": "你好，你在做什么？",
+      "reply": "我在呆呆的，你呢？",
+      "meme_id": "meme-0154",
+      "history_length": 1,
+      "actual_messages": [
+        {
+          "role": "user",
+          "content": "你好，你在做什么？"
+        }
+      ],
+      "generated_candidates": 4,
+      "elapsed_seconds": 2.031944091897458
+    }
+  ],
+  "base_model_frozen": true,
+  "run_dir": "/home/aida102/hks/model/runs/paper_v1",
+  "generator_checkpoint_global_step": 15134,
+  "legal_meme_count": 166,
+  "actual_history_lengths": [
+    1,
+    3,
+    1
+  ],
+  "ten_second_reset_verified": true,
+  "http": {
+    "bind_host": "127.0.0.1",
+    "ephemeral_port": 46483,
+    "health": {
+      "status": "ok"
+    },
+    "chat": {
+      "reply": "我也很高兴见到你。",
+      "meme_id": "meme-0092"
+    },
+    "chat_exact_fields_verified": true,
+    "generated_candidates": 4,
+    "reset": {
+      "status": "reset"
+    },
+    "history_after_reset": []
+  },
+  "total_real_generation_candidates": 16,
+  "elapsed_seconds": 16.300035838969052
+}

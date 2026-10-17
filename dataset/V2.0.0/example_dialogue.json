@@ -1,0 +1,24 @@
+{
+  "dialogue_id": "lccc-dev-00000002",
+  "original_dialogue_id": "lccc-dev-00000004",
+  "source_split": "dev",
+  "annotator": "paper1",
+  "messages": [
+    {
+      "turn_id": 0,
+      "role": "A",
+      "text": "为了你们新年有惊喜，我也是用心良苦了",
+      "meme_id": "meme-0104",
+      "confidence": 3,
+      "reason": "自述用心良苦准备惊喜，带着邀功与拜托认可的意味，拱手作揖较贴切"
+    },
+    {
+      "turn_id": 1,
+      "role": "B",
+      "text": "给你一个么么哒",
+      "meme_id": "meme-0062",
+      "confidence": 4,
+      "reason": "用么么哒回应对方的用心，表达亲近和撒娇，贴近镜头的小猫最贴合"
+    }
+  ]
+}

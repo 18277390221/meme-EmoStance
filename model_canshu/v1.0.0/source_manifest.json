@@ -1,0 +1,325 @@
+{
+  "format_version": 2,
+  "status": "complete",
+  "method": "EmoStance Chinese meme adaptation",
+  "config": {
+    "seed": 42,
+    "run_dir": "/home/aida102/hks/model/runs/paper_v1",
+    "data_dir": "/home/aida102/hks/data_spilt/v1.0.0",
+    "planner_model_path": "/home/aida102/emoji/deberta-v3-base",
+    "base_model_path": "/home/aida102/emoji/Mistral-7B-Instruct-v0.3",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "vector_dim": 256,
+    "centroid_shrinkage_tau": 50.0,
+    "knn_k": 8,
+    "leiden_resolution": 1.6,
+    "boundary_absolute_threshold": 0.7,
+    "boundary_relative_threshold": 0.85,
+    "boundary_max_clusters": 4,
+    "soft_membership_temperature": 0.7,
+    "planner_epochs": 3,
+    "planner_batch_size": 8,
+    "planner_max_length": 320,
+    "planner_learning_rate": 1.5e-05,
+    "prefix_epochs": 1,
+    "prefix_length": 8,
+    "prefix_hidden_dim": 4096,
+    "prefix_learning_rate": 0.0001,
+    "max_prompt_tokens": 384,
+    "max_training_response_tokens": 128,
+    "gradient_checkpointing": true,
+    "generator_runtime_gradient_checkpointing": false,
+    "generator_runtime_checkpoint_interval": 2000,
+    "checkpoint_interval": 500,
+    "log_interval": 100,
+    "do_sample": true,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "max_new_tokens": 64,
+    "no_repeat_ngram_size": 4,
+    "retrieval_metric": "cosine",
+    "idle_timeout": 10.0
+  },
+  "seed": 42,
+  "planner": {
+    "format_version": 1,
+    "method": "EmoStance paper role-aware DeBERTa planner",
+    "status": "complete",
+    "training_signature": "4c588facd82d341fcb1a226993661565f4a4f5e11baf6eb8cf393e68521f5916",
+    "train_examples": 15134,
+    "dev_examples": 1900,
+    "epochs": 3,
+    "global_steps": 5676,
+    "best_epoch": 2,
+    "best_dev_target_soft_ce": 1.9776781641809564,
+    "checkpoint": "/home/aida102/hks/model/runs/paper_v1/planner/best.pt",
+    "resume_checkpoint": "/home/aida102/hks/model/runs/paper_v1/planner/last.pt",
+    "elapsed_seconds_this_session": 714.3661021529697
+  },
+  "generator": {
+    "format_version": 1,
+    "status": "complete",
+    "training_signature": "a2bd163a16d99122906c8925cdf81b4be36b645ba5ad53fe9478b8eb59a4fd8a",
+    "method": "emostance_frozen_mistral_continuous_stance_prefix",
+    "base_model_path": "/home/aida102/emoji/Mistral-7B-Instruct-v0.3",
+    "architecture": {
+      "vector_dim": 256,
+      "lm_hidden_size": 4096,
+      "prefix_length": 8,
+      "prefix_hidden_dim": 4096
+    },
+    "train_examples": 15134,
+    "epochs_requested": 1,
+    "epochs_complete": 1,
+    "global_step": 15134,
+    "history": [
+      {
+        "epoch": 1,
+        "train_reply_eos_ce": 2.6139282351742494,
+        "steps": 15134
+      }
+    ],
+    "best_metric": "train_epoch_reply_eos_ce",
+    "best_loss": 2.6139282351742494,
+    "last_checkpoint": "/home/aida102/hks/model/runs/paper_v1/generator/last.pt",
+    "best_checkpoint": "/home/aida102/hks/model/runs/paper_v1/generator/best.pt",
+    "config": {
+      "seed": 42,
+      "run_dir": "/home/aida102/hks/model/runs/paper_v1",
+      "data_dir": "/home/aida102/hks/data_spilt/v1.0.0",
+      "planner_model_path": "/home/aida102/emoji/deberta-v3-base",
+      "base_model_path": "/home/aida102/emoji/Mistral-7B-Instruct-v0.3",
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "vector_dim": 256,
+      "centroid_shrinkage_tau": 50.0,
+      "knn_k": 8,
+      "leiden_resolution": 1.6,
+      "boundary_absolute_threshold": 0.7,
+      "boundary_relative_threshold": 0.85,
+      "boundary_max_clusters": 4,
+      "soft_membership_temperature": 0.7,
+      "planner_epochs": 3,
+      "planner_batch_size": 8,
+      "planner_max_length": 320,
+      "planner_learning_rate": 1.5e-05,
+      "prefix_epochs": 1,
+      "prefix_length": 8,
+      "prefix_hidden_dim": 4096,
+      "prefix_learning_rate": 0.0001,
+      "max_prompt_tokens": 384,
+      "max_training_response_tokens": 128,
+      "gradient_checkpointing": true,
+      "generator_runtime_gradient_checkpointing": false,
+      "generator_runtime_checkpoint_interval": 2000,
+      "checkpoint_interval": 500,
+      "log_interval": 100,
+      "do_sample": true,
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "max_new_tokens": 64,
+      "retrieval_metric": "cosine",
+      "idle_timeout": 10.0
+    },
+    "frozen_lm": true,
+    "selection_uses_test": false,
+    "truncation_side": "left",
+    "loss_tokens": "response content plus EOS; prompt/prefix masked",
+    "base_weights_copied": false,
+    "gradient_checkpointing_enabled": false,
+    "runtime_checkpoint_interval": 2000
+  },
+  "graph": {
+    "training_utterances": 24008,
+    "training_samples": 15134,
+    "meme_count": 166,
+    "vector_dim": 256,
+    "num_clusters": 10,
+    "cluster_sizes": [
+      20,
+      16,
+      22,
+      28,
+      21,
+      12,
+      15,
+      19,
+      4,
+      9
+    ],
+    "soft_membership_memes": 16,
+    "zero_feature_utterances": 0,
+    "algorithm": "leidenalg.RBConfigurationVertexPartition",
+    "resolution": 1.6,
+    "fit_splits": [
+      "train"
+    ],
+    "feature_template": "Chinese character/Latin word unigrams + adjacent bigrams; signed hashed TF-IDF",
+    "meme_descriptions_used": false,
+    "annotation_reasons_used": false
+  },
+  "index": {
+    "split": "train",
+    "responses": 15134,
+    "vector_dim": 256,
+    "vectors": "full training history plus reply -> source soft distribution @ training source prototypes; same encoder as generated queries",
+    "selection": "meme id with highest confidence-weighted annotator vote; lexical id breaks ties",
+    "train_file_sha256": "112beb3a5ad30947c8598139e4dcec8094ffc0225c2734731d21cf6b5b1056ff",
+    "planner_checkpoint_sha256": "28b6c7108f376a807f6d38d519136f7281929ff1f886f52ab8d13f16f938cc27",
+    "space_sha256": "789ba44b47d7c51848aeb3a23b3da826f0c3d487d1fd3b334c1e56b9009ce124"
+  },
+  "evaluation_file": "/home/aida102/hks/model/runs/paper_v1/evaluation.json",
+  "evaluation_summary": {
+    "dev": {
+      "soft_ce": 1.9776758215837429,
+      "jsd": 0.33043259692606636,
+      "overlap": 0.34653922978417406,
+      "examples": 1900,
+      "target_vector_mse": 2.8874150816596802e-05,
+      "majority_cluster_accuracy": 0.24578947368421053,
+      "train_prior_baseline": {
+        "soft_ce": 2.0089859993450276,
+        "jsd": 0.3352538396256329,
+        "overlap": 0.341457094155385
+      }
+    },
+    "test": {
+      "soft_ce": 1.9591473334445955,
+      "jsd": 0.3284342231874613,
+      "overlap": 0.34913076271778715,
+      "examples": 1869,
+      "target_vector_mse": 2.7298600028734197e-05,
+      "majority_cluster_accuracy": 0.265382557517389,
+      "train_prior_baseline": {
+        "soft_ce": 1.986887503775678,
+        "jsd": 0.33280397711093396,
+        "overlap": 0.34430805280210836
+      }
+    }
+  },
+  "inference": {
+    "num_candidates": 4,
+    "reranking": "minimum predicted-control soft cross entropy",
+    "no_repeat_ngram_size": 4,
+    "meme_selection": "nearest training response to generated reply source-distribution @ source-prototypes vector",
+    "idle_timeout_seconds": 10.0
+  },
+  "original_emostance_modified": false,
+  "base_model_weights_copied": false,
+  "adaptations": [
+    "Chinese character/Latin word TF-IDF instead of English-only regex",
+    "user-selected grouped 80/10/10 split; seed42",
+    "source-entropy gate from paper, rather than target-entropy gate in released code",
+    "mean MSE vector auxiliary loss follows released implementation rather than paper L2 sum notation",
+    "Leiden discovers ten regions for this dataset",
+    "training-response meme retrieval and ten-second conversation reset added for application"
+  ],
+  "final_smoke": {
+    "format_version": 1,
+    "status": "passed",
+    "preview": false,
+    "purpose": "Completed-model engineering verification, not a conversational-quality assessment",
+    "seed": 42,
+    "training_or_optimizer_steps": 0,
+    "dev_or_test_samples_read": 0,
+    "expected_candidates_per_request": 4,
+    "results": [
+      {
+        "arrival_seconds": 0.0,
+        "input": "今天终于完成任务了，特别开心！",
+        "reply": "是的，终于完成了，我觉得我们的成绩都不错",
+        "meme_id": "meme-0003",
+        "history_length": 1,
+        "actual_messages": [
+          {
+            "role": "user",
+            "content": "今天终于完成任务了，特别开心！"
+          }
+        ],
+        "generated_candidates": 4,
+        "elapsed_seconds": 2.362876118044369
+      },
+      {
+        "arrival_seconds": 4.0,
+        "input": "最近有点难过，想找人聊聊。",
+        "reply": "哎呀，不要哭，我们一起聊聊吧",
+        "meme_id": "meme-0132",
+        "history_length": 3,
+        "actual_messages": [
+          {
+            "role": "user",
+            "content": "今天终于完成任务了，特别开心！"
+          },
+          {
+            "role": "assistant",
+            "content": "是的，终于完成了，我觉得我们的成绩都不错"
+          },
+          {
+            "role": "user",
+            "content": "最近有点难过，想找人聊聊。"
+          }
+        ],
+        "generated_candidates": 4,
+        "elapsed_seconds": 2.144589925999753
+      },
+      {
+        "arrival_seconds": 14.0,
+        "input": "你好，你在做什么？",
+        "reply": "我在呆呆的，你呢？",
+        "meme_id": "meme-0154",
+        "history_length": 1,
+        "actual_messages": [
+          {
+            "role": "user",
+            "content": "你好，你在做什么？"
+          }
+        ],
+        "generated_candidates": 4,
+        "elapsed_seconds": 2.031944091897458
+      }
+    ],
+    "base_model_frozen": true,
+    "run_dir": "/home/aida102/hks/model/runs/paper_v1",
+    "generator_checkpoint_global_step": 15134,
+    "legal_meme_count": 166,
+    "actual_history_lengths": [
+      1,
+      3,
+      1
+    ],
+    "ten_second_reset_verified": true,
+    "http": {
+      "bind_host": "127.0.0.1",
+      "ephemeral_port": 46483,
+      "health": {
+        "status": "ok"
+      },
+      "chat": {
+        "reply": "我也很高兴见到你。",
+        "meme_id": "meme-0092"
+      },
+      "chat_exact_fields_verified": true,
+      "generated_candidates": 4,
+      "reset": {
+        "status": "reset"
+      },
+      "history_after_reset": []
+    },
+    "total_real_generation_candidates": 16,
+    "elapsed_seconds": 16.300035838969052
+  },
+  "verification_summary": {
+    "status": "passed",
+    "unit_tests": 116,
+    "unit_test_seconds": 2.348,
+    "unit_test_log": "/home/aida102/hks/model/runs/tests_final.log",
+    "runtime_smoke": "final_smoke.json",
+    "history_lengths": [
+      1,
+      3,
+      1
+    ],
+    "true_generation_candidates": 16
+  }
+}

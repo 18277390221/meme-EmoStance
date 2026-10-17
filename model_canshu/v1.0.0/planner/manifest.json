@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "method": "EmoStance paper role-aware DeBERTa planner",
+  "status": "complete",
+  "training_signature": "4c588facd82d341fcb1a226993661565f4a4f5e11baf6eb8cf393e68521f5916",
+  "train_examples": 15134,
+  "dev_examples": 1900,
+  "epochs": 3,
+  "global_steps": 5676,
+  "best_epoch": 2,
+  "best_dev_target_soft_ce": 1.9776781641809564,
+  "checkpoint": "/home/aida102/hks/model/runs/paper_v1/planner/best.pt",
+  "resume_checkpoint": "/home/aida102/hks/model/runs/paper_v1/planner/last.pt",
+  "elapsed_seconds_this_session": 714.3661021529697
+}

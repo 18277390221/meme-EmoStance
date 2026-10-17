@@ -1,0 +1,35 @@
+# Local credentials; keep example configuration available for collaborators.
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Python environments and generated files.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
+
+# Machine-specific diagnostic output.
+/zerotier_chat/windows_zerotier_public_status.json
+/zerotier_chat/windows_zerotier_network.json
+
+# Local network identities and SSH host records.
+/zerotier_chat/network.env
+/zerotier_chat/.ssh_known_hosts
+
+# Reproducible datasets are published below model/git_assets/ when oversized.
+/dataset/*/backups/
+/dataset/**/*.7z
+/dataset/V2.0.0/cleaned_dialogues.jsonl
+/data_spilt/V2.0.0/train.jsonl
+/data_spilt/V2.0.0/dialogues/train.jsonl
+/data_spilt/V2.0.0/annotation_rows/train.jsonl
+
+# Restore duplicated archive data with model/tools/restore_git_assets.py.
+/model_canshu/*/data/train.jsonl
+
+# Trained binary weights exceed GitHub's ordinary Git file limit.
+/model_canshu/**/*.pt

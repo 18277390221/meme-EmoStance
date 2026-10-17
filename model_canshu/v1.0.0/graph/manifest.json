@@ -1,0 +1,29 @@
+{
+  "training_utterances": 24008,
+  "training_samples": 15134,
+  "meme_count": 166,
+  "vector_dim": 256,
+  "num_clusters": 10,
+  "cluster_sizes": [
+    20,
+    16,
+    22,
+    28,
+    21,
+    12,
+    15,
+    19,
+    4,
+    9
+  ],
+  "soft_membership_memes": 16,
+  "zero_feature_utterances": 0,
+  "algorithm": "leidenalg.RBConfigurationVertexPartition",
+  "resolution": 1.6,
+  "fit_splits": [
+    "train"
+  ],
+  "feature_template": "Chinese character/Latin word unigrams + adjacent bigrams; signed hashed TF-IDF",
+  "meme_descriptions_used": false,
+  "annotation_reasons_used": false
+}
