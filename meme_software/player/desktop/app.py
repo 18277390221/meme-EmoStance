@@ -21,6 +21,16 @@ from stt_bridge import SpeechProcess, find_asr_root
 from server_link import ServerLink
 from render_pipeline import RenderEngine
 from conversation_turn import ConversationTurn
+from voice_recovery import VoiceRecovery, configured_capture_available
+from audio_output import UsbAudioOutput, DEFAULT_USB_SINK
+
+if not (Path(__file__).resolve().parent / 'meme_sing').is_dir():
+    repository = Path(__file__).resolve().parents[3]
+    if (repository / 'meme_sing').is_dir():
+        sys.path.insert(0, str(repository))
+from meme_sing.controller import MusicController
+from meme_sing.playback import MusicPlayer
+from meme_huanxing.controller import StandbyController
 
 
 def speech_defaults():
@@ -34,13 +44,18 @@ def main():
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument('--windowed', action='store_true', help='以普通窗口启动；默认全屏')
     parser.add_argument('--mute', action='store_true', help='仅画面测试，不播放声音')
+    parser.add_argument('--audio-sink', default=DEFAULT_USB_SINK,
+                        help='固定使用的USB音箱Pulse输出名称，重连后自动恢复')
     parser.add_argument('--no-api', action='store_true', help='不启动本机回复接口')
     parser.add_argument('--port', type=int, default=8784)
     parser.add_argument('--check', action='store_true', help='检查依赖和数据，不打开窗口')
     parser.add_argument('--no-stt', action='store_true', help='只播放表情，不启动收音/服务器通信')
     parser.add_argument('--stt-root', type=Path, help='明确选择已有离线ASR安装目录')
     parser.add_argument('--meme-dir', type=Path, help='sucai_meme/meme_gif本地目录；按文件名前缀映射编号')
-    parser.add_argument('--end-silence', type=float, default=1.2, help='停顿多少秒提交整句，0.5到5，默认1.2')
+    parser.add_argument('--end-silence', type=float, default=.7, help='停顿多少秒提交整句，0.5到5，默认0.7')
+    parser.add_argument('--music-dir', type=Path,
+                        default=Path.home() / 'meme/meme-EmoStance/sucai_meme/meme_music',
+                        help='本地点歌MP3目录；不上传、不下载音乐')
     parser.add_argument('--legacy-library', action='store_true', help='明确选择旧SQLite素材，仅用于回退对照')
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
@@ -92,9 +107,11 @@ def main():
             self.picture_layout = None
             self.indicator_layout = None
             self.current_event = None
+            self.current_visual_name = None
             self.pending_event = None
             self.render_generation = 0
-            self.renderer = RenderEngine(lambda key: read_asset(player, key))
+            self.renderer = RenderEngine(lambda key, background_id=None:
+                                         read_asset(player, key, background_id=background_id))
             self.render_stats = {}
             self.render_summary = ''
             self.drawn_frames = 0
@@ -107,13 +124,31 @@ def main():
             self.last_revision = -1
             self.key = None
             self.reply = '你好呀，我在这里。'
-            self.audio = Audio(args.mute)
+            self.audio = Audio(args.mute, sink_name=args.audio_sink)
             self.server = None
             self.manager = None
             self.link = ServerLink()
             self.speech = SpeechProcess()
-            self.turn = ConversationTurn(self.link.submit, self.speech.pause, self.speech.resume)
-            self.speech.on_final = self.turn.submit_final
+            self.voice_recovery = VoiceRecovery()
+            self.recovery_ticket = None
+            self.voice_wanted = False
+            self.waiting_audio_start = False
+            self.audio_gate_held = False
+            self.standby_connection_lost = False
+            self.turn = ConversationTurn(self.link.submit, self.speech.pause, self.speech.resume,
+                speech_start=self.link.speech_start, speech_cancel=self.link.speech_cancel,
+                playback_done=self.link.playback_done)
+            self.music = MusicController(self.turn, args.music_dir, self.speech.music_control,
+                lambda: not self.speech.running() or self.speech.paused,
+                player=MusicPlayer(volume=0 if args.mute else 30, sink_name=args.audio_sink))
+            self.audio_output = UsbAudioOutput(args.audio_sink, get_owned_pids=self.audio_process_ids,
+                can_repair=self.audio_repair_allowed)
+            self.audio_output.start()
+            self.link.on_ready = self.server_ready
+            self.speech.on_music_stop = self.music.music_stop
+            self.speech.on_music_utterance = self.music.music_utterance
+            player.communication_status = self.communication_status
+            player.music_command = self.music.command
             original_respond = player.respond
             player.respond = lambda body: self.turn.respond(body, original_respond, player.requests)
             self.ready_media = None
@@ -124,7 +159,7 @@ def main():
             self.speech_error = ''
             self.stats = {}
             self.sent_at = 0.0
-            self.quiet_intro = not args.no_stt and sys.platform == 'linux'
+            self.quiet_intro = False
             self.speech_pane = None
             self.settings = speech_defaults()
             self.config_path = args.root / 'data/speech-config.json'
@@ -139,7 +174,16 @@ def main():
             self.io_done = threading.Event()
             self.restarting = False
             self.next_settings = None
-            self.fullscreen = not args.windowed
+            self.standby = StandbyController(window, self, Path(__file__).resolve().parent,
+                muted=args.mute, sink_name=args.audio_sink, schedule=False)
+            self.speech.on_speech_start = self.standby.speech_started
+            self.speech.on_speech_cancel = self.standby.speech_cancelled
+            self.speech.on_final = self.standby.handle_final
+            self.speech.on_standby_wake = self.standby.on_wake
+            self.speech.on_standby_utterance = self.standby.on_utterance
+            self.speech.on_standby_sleep = self.standby.on_sleep
+            player.standby_command = self.standby.command
+            self.fullscreen = True
             window.title('Meme猫 · 小剧场')
             window.geometry('800x540')
             window.minsize(320, 240)
@@ -151,18 +195,14 @@ def main():
             self.canvas = tk.Canvas(window, bg=self.BG, bd=0, highlightthickness=0)
             self.canvas.pack(fill='both', expand=True)
             self.picture_item = self.canvas.create_image(0, 0, anchor='center')
-            self.subtitle_shade = self.canvas.create_rectangle(0, 0, 0, 0, fill='#10251f', outline='', state='hidden')
+            self.subtitle_shade = self.canvas.create_image(0, 0, anchor='nw', state='hidden')
             self.subtitle_item = self.canvas.create_text(0, 0, anchor='s', fill='white', justify='center')
             self.canvas.bind('<Configure>', self.resize)
-            bar = tk.Frame(window, bg='#102e26')
-            bar.pack(fill='x')
-            for text, action in [('表情', self.scenes), ('重播', self.replay),
-                                 ('管理', self.manage), ('语音', self.voice_settings),
-                                 ('全屏', lambda: self.set_fullscreen(not self.fullscreen)),
-                                 ('退出', self.close)]:
-                tk.Button(bar, text=text, command=action, bg='#163c31', fg='#ebfff5',
-                          activebackground='#27634e', activeforeground='white', relief='flat',
-                          font=('sans-serif', 10), padx=7, pady=5).pack(side='left', expand=True, fill='x')
+            self.touch_controls_visible = False
+            self.touch_hide_job = None
+            self.canvas.bind('<ButtonPress-1>', self.touch_pressed)
+            self.canvas.bind('<ButtonRelease-1>', self.touch_released)
+            self.canvas.bind('<Configure>', lambda event: self.draw_exit_control(), add='+')
             window.update_idletasks()
             self.set_fullscreen(self.fullscreen)
             if not args.no_api:
@@ -184,45 +224,124 @@ def main():
             if not args.no_stt and sys.platform == 'linux':
                 window.after(200, self.start_voice)
 
-        def start_voice(self):
+        def communication_status(self):
+            with self.turn.lock:
+                status = {'protocol_version': 2, 'phase': self.turn.phase,
+                          'voice_enabled': self.turn.enabled, 'media_active': self.turn.media_active}
+            with self.link.lock:
+                status.update(server_connected=self.link.connected, model_ready=self.link.model_ready,
+                              model_version=self.link.model_version, pending_requests=len(self.link.waiting),
+                              playback_pending=self.link.awaiting_playback is not None,
+                              pending_playback_receipts=len(self.link.playback_receipts))
+            status.update(asr_running=self.speech.running(), microphone_paused=self.speech.paused,
+                          end_silence_seconds=args.end_silence,
+                          asr_state=self.speech_state, asr_error=self.speech_error[:300],
+                          voice_recovery=self.voice_recovery.status())
+            displayed = self.current_event or {}
+            status.update(conversation_id=displayed.get('conversation_id'),
+                          background_id=displayed.get('background_id', getattr(player, 'background_id', None)),
+                          selected_visual=self.current_visual_name)
+            status['music'] = self.music.status()
+            status['audio_output'] = self.audio_output.status()
+            status['standby'] = self.standby.status()
+            return status
+
+        def server_ready(self, ready):
+            self.music.set_ready(ready)
+            if not ready:
+                self.standby_connection_lost = True
+
+        def poll_standby(self):
+            if self.standby_connection_lost:
+                self.standby_connection_lost = False
+                was_active = self.standby.active
+                self.standby.abort()
+                if (was_active and self.voice_wanted and not self.restarting and
+                        self.turn.ready and self.link.connected and self.speech.running()
+                        and self.voice_recovery.status()['state'] == 'idle'
+                        and (args.mute or self.audio_output.ready())):
+                    self.turn.enable()
+            self.standby.poll()
+
+        def audio_process_ids(self):
+            pids = set(self.music.player.process_ids())
+            process = self.audio.process
+            if process is not None and process.poll() is None:
+                pids.add(process.pid)
+            standby = getattr(self, 'standby', None)
+            screen = getattr(standby, 'screen', None)
+            process = getattr(getattr(screen, 'audio', None), 'process', None)
+            if process is not None and process.poll() is None:
+                pids.add(process.pid)
+            return pids
+
+        def audio_repair_allowed(self):
+            standby = getattr(self, 'standby', None)
+            return ((not self.speech.running() or self.speech.paused)
+                    and not self.music.active and not self.audio.is_playing()
+                    and not (standby is not None and standby.active))
+
+        def start_voice(self, recovery_ticket=None):
             if self.closed or self.restarting:
                 return
+            if recovery_ticket is None:
+                self.voice_recovery.cancel()
+                self.voice_wanted = True
+            elif not self.voice_wanted:
+                return
+            self.recovery_ticket = recovery_ticket
             try:
                 self.speech_error = ''
                 root = find_asr_root(args.root, self.settings['asr_root'])
                 if not self.link.thread or not self.link.thread.is_alive():
                     self.link.start(self.settings['host'], self.settings['port'], self.settings['token_file'])
+                if not args.mute and not self.audio_output.ready():
+                    self.waiting_audio_start = True
+                    self.audio_output.request_recovery()
+                    self.speech_state = 'recovering'
+                    self.notice = '正在恢复USB音箱输出，准备好后自动开启收音。'
+                    return
+                self.waiting_audio_start = False
                 self.speech.start(root, self.settings['device'], paused=True, end_silence=args.end_silence)
                 self.turn.enable()
                 self.speech_state = 'loading'
-                self.notice = '正在加载本地中文识别，请稍候。'
+                self.notice = '正在加载本地语音识别，请稍候。'
             except (ValueError, OSError) as error:
-                self.turn.disable()
+                self.music.disable()
+                self.voice_recovery.fail({'reason': 'asr_start_failed', 'recoverable': False,
+                                          'message': str(error)})
+                self.recovery_ticket = None
+                self.waiting_audio_start = False
                 self.speech_state = 'error'
                 self.notice = str(error)
                 self.speech_error = str(error)
 
         def draw_listening(self):
-            active = (self.turn.phase in ('listening', 'playing') and self.speech_state == 'listening' and self.speech.running() and
+            active = (self.turn.phase == 'listening' and self.speech_state == 'listening' and self.speech.running() and
                       time.monotonic() - self.speech.last_activity < 1.5)
-            if self.turn.phase in ('waiting', 'preparing'):
+            if self.turn.phase in ('waiting', 'preparing', 'playing', 'cooldown', 'music_preparing', 'music', 'music_stopping'):
                 label = {'waiting':'等待回复', 'preparing':'准备回复',
-                         'playing':'正在回复', 'cooldown':'准备聆听'}[self.turn.phase]
+                         'playing':'正在回复', 'cooldown':'准备聆听',
+                         'music_preparing':'正在选歌', 'music':'音乐播放中',
+                         'music_stopping':'正在停止音乐'}[self.turn.phase]
                 if self.turn.phase == 'preparing' and self.turn.media_active:
                     label = '回复待播放'
                 color = '#8fc9ff'
+            elif self.turn.phase in ('standby_preparing', 'standby', 'standby_waking'):
+                label = {'standby_preparing': '准备待机', 'standby': '正在待机',
+                         'standby_waking': '正在起床'}[self.turn.phase]
+                color = '#8fc9ff'
             elif active:
                 label = '正在听' if self.link.connected else '正在听 · 未连接'
-                if self.turn.phase == 'playing':
-                    label = '边播边听' if self.link.connected else '边播边听 · 未连接'
                 color = '#74e2b8' if self.link.connected else '#ffcc78'
                 if self.link.connected and time.monotonic() - self.sent_at < 1:
                     label, color = '发送中', '#8fc9ff'
                 if self.net_state in ('unsent', 'unconfirmed', 'server_error', 'auth_error', 'reply_error'):
                     label, color = '发送异常', '#ffcc78'
             else:
-                label = {'loading': '正在准备', 'paused': '收音已停',
-                         'stopping': '正在停止', 'error': '语音异常'}.get(self.speech_state, '收音等待')
+                label = {'loading': '正在准备', 'paused': '等待服务器就绪' if self.turn.phase == 'connecting' else '收音已停',
+                         'stopping': '正在停止', 'error': '语音异常',
+                         'recovering': '麦克风恢复中'}.get(self.speech_state, '收音等待')
                 color = '#ffcc78' if self.speech_state == 'error' else '#a4b7b0'
             tag = 'listening-indicator'
             signature = (label, color, active)
@@ -230,14 +349,16 @@ def main():
                 return
             self.indicator_layout = signature
             self.canvas.delete(tag)
-            self.canvas.create_rectangle(6, 6, 176, 39, fill='#10251f', outline='', tags=tag)
+            shade = self.canvas.create_rectangle(6, 6, 6, 39, fill='#10251f', outline='', tags=tag)
             for index in range(4):
                 height = (6 + 11 * (1 + math.sin(time.monotonic() * 7 + index))) if active else 7
                 x = 14 + index * 5
                 self.canvas.create_line(x, 22 - height / 2, x, 22 + height / 2,
                                         fill=color, width=3, tags=tag)
-            self.canvas.create_text(40, 22, text=label, anchor='w', fill=color,
+            text_item = self.canvas.create_text(40, 22, text=label, anchor='w', fill=color,
                                     font=('sans-serif', 10, 'bold'), tags=tag)
+            text_bounds = self.canvas.bbox(text_item)
+            self.canvas.coords(shade, 6, 6, (text_bounds[2] if text_bounds else 40) + 8, 39)
 
         def animate_listening(self):
             if not self.closed:
@@ -250,45 +371,74 @@ def main():
                 if kind in ('loading', 'listening', 'paused'):
                     self.speech_state = kind
                     if kind == 'listening':
+                        if self.recovery_ticket is not None:
+                            self.voice_recovery.recovered(self.recovery_ticket)
+                            self.recovery_ticket = None
+                        self.speech_error = ''
                         self.notice = '正在听，说完后停顿约%s秒再发送。' % args.end_silence
                     elif kind == 'loading':
                         self.notice = '正在加载本地中文模型。'
+                elif kind == 'utterance_cancelled':
+                    self.notice = event.get('message', '本句话未完整结束，请重说。')
                 elif kind == 'final':
                     if event.get('request_id'):
                         self.sent_at = time.monotonic()
                         self.notice = '识别完成，正在发送文字。'
                 elif kind == 'error':
-                    self.turn.disable()
+                    if not self.voice_wanted or self.closed:
+                        continue  # A late device error cannot undo a manual pause.
+                    self.standby.abort()
+                    self.music.disable()
                     self.speech_state = 'error'
                     self.notice = event.get('message', '收音异常')
                     self.speech_error = self.notice
+                    recover = (self.voice_recovery.fail(event)
+                               if self.voice_wanted and not self.restarting and not self.closed else False)
+                    if recover:
+                        self.speech_state = 'recovering'
+                        self.audio_output.request_recovery()
+                        self.notice = '录音设备连接中断，已停止音乐；等待设备恢复后自动重新收音。'
+                    elif self.voice_recovery.status()['state'] == 'exhausted':
+                        self.notice = '麦克风多次恢复失败，请检查设备后在语音设置中重新开启。'
+                    self.recovery_ticket = None
+                    print(json.dumps({'event': 'asr_error', 'reason': event.get('reason', 'unknown'),
+                                      'recoverable': event.get('recoverable') is True,
+                                      'recovery': self.voice_recovery.status()}, ensure_ascii=False), flush=True)
                 elif kind == 'stats':
                     self.stats = event.get('data', {})
-                elif kind == 'exited' and self.speech_state != 'error':
-                    self.turn.disable()
+                elif kind == 'exited' and self.speech_state not in ('error', 'recovering'):
+                    self.standby.abort()
+                    self.music.disable()
                     self.speech_state = 'paused'
                     self.notice = '收音已停止，麦克风已释放。'
             for event in self.link.drain():
                 self.net_state = event['type']
-                messages = {'connecting': '正在连接服务器。', 'connected': '服务器已连接，正在收音。',
+                messages = {'connecting': '正在连接服务器。', 'connected': '服务器模型已就绪。',
                             'sent': '文字已发出，等待服务器确认。',
-                            'ack': '服务器已确认收到文字，尚未返回表情编号和回复。'}
+                            'accepted': '服务器已接收完整文字，正在推理。'}
                 self.notice = event.get('message', messages.get(event['type'], self.notice))
                 if event['type'] == 'reply':
                     try:
+                        self.music.observe_reply(event)
                         # Only local paired media can be selected. Server text
                         # is never interpreted as a path, command or audio URL.
+                        background_id = (player.begin_conversation(event['conversation_id'])
+                                         if hasattr(player, 'begin_conversation') else None)
                         if event['meme_id'] not in {row['id'] for row in player.assets()}:
                             raise ValueError('服务器返回的表情编号不在当前素材来源中或已剔除：' + event['meme_id'])
                         player.respond({'meme_id': event['meme_id'], 'reply_text': event['reply_text'],
-                                        'request_id': 'server-' + event['id']})
+                                        'request_id': 'server-' + event['id'],
+                                        'conversation_id': event['conversation_id'],
+                                        'background_id': background_id})
                         self.notice = ('已收到新回复，等当前表情与声音完整播完再播放。' if self.turn.media_active
                                        else '已收到小猫回复，正在准备本地表情与配套声音。')
                     except (ValueError, sqlite3.Error) as error:
                         self.net_state = 'reply_error'
                         self.notice = str(error)
+                        self.link.playback_done(event['id'], failed=True)
                         self.turn.failure()
-                elif event['type'] in ('ack', 'unsent', 'unconfirmed', 'server_error', 'auth_error', 'reply_error', 'closed'):
+                elif event['type'] in ('unsent', 'server_error', 'reply_error', 'server_restarted'):
+                    self.music.forget_request(event.get('id'))
                     self.turn.failure()
             if self.restarting and self.io_done.is_set():
                 self.restarting = False
@@ -306,11 +456,17 @@ def main():
                     capture.get('overflow_events', '—')) + ('\n' + self.render_summary if self.render_summary else ''))
 
         def stop_voice(self, restart=None):
+            self.voice_wanted = False
+            self.waiting_audio_start = False
+            self.audio_gate_held = False
+            self.voice_recovery.cancel()
+            self.recovery_ticket = None
+            self.next_settings = restart
+            self.standby.abort()
             if self.restarting:
                 return
-            self.turn.disable()
+            self.music.disable()
             self.restarting = True
-            self.next_settings = restart
             self.speech_state = 'stopping'
             self.notice = '正在停止收音并释放麦克风。'
             self.io_done.clear()
@@ -321,6 +477,51 @@ def main():
                 finally:
                     self.io_done.set()
             threading.Thread(target=stop, daemon=True).start()
+
+        def poll_voice_recovery(self):
+            if self.closed or not self.voice_wanted:
+                return
+            if self.waiting_audio_start:
+                if args.mute or self.audio_output.ready():
+                    ticket = self.recovery_ticket
+                    self.waiting_audio_start = False
+                    self.start_voice(recovery_ticket=ticket)
+                return
+            if self.voice_recovery.status()['state'] not in (
+                    'backoff', 'waiting_device', 'device_stabilizing'):
+                return
+            ticket = self.voice_recovery.poll(
+                worker_running=self.speech.running(), music_active=self.music.active,
+                restarting=self.restarting or (not args.mute and not self.audio_output.ready()),
+                device_available=configured_capture_available(self.settings['device']))
+            if ticket is not None and self.voice_recovery.attempt_started(ticket):
+                print(json.dumps({'event': 'asr_recovery_attempt',
+                                  'recovery': self.voice_recovery.status()}, ensure_ascii=False), flush=True)
+                self.start_voice(recovery_ticket=ticket)
+
+        def poll_audio_output(self):
+            if self.closed or args.mute or not self.voice_wanted or self.restarting:
+                return
+            if not self.audio_output.ready():
+                if not self.audio_gate_held:
+                    self.audio_gate_held = True
+                    self.standby.abort()
+                    self.music.disable()
+                    self.stop()
+                elif self.audio.is_playing():
+                    self.stop()  # A pending reply can arrive during output recovery.
+                if self.voice_recovery.status()['state'] not in ('error', 'exhausted'):
+                    self.speech_state = 'recovering'
+                    self.notice = 'USB音箱输出恢复中，准备好后自动继续对话。'
+                return
+            if self.audio_gate_held:
+                self.audio_gate_held = False
+                recovery_state = self.voice_recovery.status()['state']
+                may_resume = recovery_state == 'idle' or (
+                    recovery_state == 'recovering' and self.recovery_ticket is not None)
+                if (self.speech.running() and not self.waiting_audio_start
+                        and may_resume):
+                    self.turn.enable()
 
         def voice_settings(self):
             if self.speech_pane and self.speech_pane.winfo_exists():
@@ -370,20 +571,73 @@ def main():
             keys = {item['id'] for item in player.assets()}
             return [s for s in player.library()['scenarios'] if s['meme_id'] in keys]
 
+        def draw_exit_control(self):
+            tag = 'touch-exit-control'
+            self.canvas.delete(tag)
+            if not self.touch_controls_visible:
+                return
+            right = max(64, self.canvas.winfo_width()) - 8
+            cx, cy = right - 28, 36
+            # Open door and outward arrow, with a narrow contrast outline.
+            # Only strokes are drawn: the expression remains visible behind it.
+            paths = [
+                (cx + 1, cy - 14, cx - 13, cy - 14, cx - 13, cy + 14, cx + 1, cy + 14),
+                (cx - 2, cy, cx + 16, cy),
+                (cx + 9, cy - 7, cx + 16, cy, cx + 9, cy + 7),
+            ]
+            for color, width in [('#16342d', 6), ('#f3fff9', 3)]:
+                for points in paths:
+                    self.canvas.create_line(*points, fill=color, width=width,
+                                            capstyle='round', joinstyle='round', tags=tag)
+            self.canvas.tag_raise(tag)
+
+        def hide_touch_controls(self):
+            self.touch_hide_job = None
+            if self.closed:
+                return
+            self.touch_controls_visible = False
+            self.draw_exit_control()
+            self.set_fullscreen(True)
+
+        def touch_pressed(self, event):
+            # A first touch reveals the arrow; only a later touch can exit.
+            right = max(64, self.canvas.winfo_width()) - 8
+            if self.touch_controls_visible and right - 56 <= event.x <= right and 8 <= event.y <= 64:
+                self.close()
+                return 'break'
+            if self.touch_hide_job is not None:
+                window.after_cancel(self.touch_hide_job)
+                self.touch_hide_job = None
+            self.touch_controls_visible = True
+            self.draw_exit_control()
+
+        def touch_released(self, event):
+            if self.closed:
+                return
+            if self.touch_hide_job is not None:
+                window.after_cancel(self.touch_hide_job)
+            self.touch_hide_job = window.after(3000, self.hide_touch_controls)
+
         def set_fullscreen(self, enabled):
             self.fullscreen = enabled
             window.attributes('-fullscreen', enabled)
 
-        def request(self, key, text):
+        def request(self, key, text, background_id=None, conversation_id=None):
             try:
-                player.respond({'meme_id': key, 'reply_text': text,
-                                'request_id': 'desktop-' + uuid.uuid4().hex})
+                body = {'meme_id': key, 'reply_text': text,
+                        'request_id': 'desktop-' + uuid.uuid4().hex}
+                if background_id is not None:
+                    body['background_id'] = background_id
+                if conversation_id is not None:
+                    body['conversation_id'] = conversation_id
+                player.respond(body)
             except Exception as error:
                 messagebox.showerror('无法播放', str(error), parent=window)
 
         def replay(self):
             if self.key:
-                self.request(self.key, self.reply)
+                snapshot = self.current_event or {}
+                self.request(self.key, self.reply, snapshot.get('background_id'), snapshot.get('conversation_id'))
 
         def resize(self, event=None):
             if self.resize_job:
@@ -437,8 +691,16 @@ def main():
                                           width=max(50, right - left - 20), font=font)
                 box = self.canvas.bbox(self.subtitle_item)
                 if box:
-                    self.canvas.coords(self.subtitle_shade, left, max(top, box[1] - 8), right, bottom)
-                    self.canvas.itemconfigure(self.subtitle_shade, state='normal')
+                    shade_top = max(top, box[1] - 8)
+                    # One bounded RGBA overlay per subtitle layout; Tk blends it
+                    # over each current frame without modifying the expression.
+                    overlay = Image.new('RGBA', (max(1, math.ceil(right - left)),
+                                                max(1, math.ceil(bottom - shade_top))),
+                                        (115, 115, 115, 112))
+                    self.subtitle_shade_photo = ImageTk.PhotoImage(overlay, master=window)
+                    self.canvas.coords(self.subtitle_shade, left, shade_top)
+                    self.canvas.itemconfigure(self.subtitle_shade,
+                                              image=self.subtitle_shade_photo, state='normal')
             self.drawn_frames += 1
             self.draw_ms.append((time.monotonic() - before) * 1000)
             self.draw_ms = self.draw_ms[-512:]
@@ -472,11 +734,15 @@ def main():
                     continue
                 kind = item['type']
                 if kind == 'ready':
+                    if not item['reflow'] and self.speech.running() and not self.speech.paused:
+                        self.ready_media = item
+                        continue  # Confirm ALSA has closed before starting speaker output.
                     if self.photo_profile != item['cache_key']:
                         self.photos.clear()
                         self.photo_bytes = 0
                         self.photo_profile = item['cache_key']
                     self.current_event = item['event']
+                    self.current_visual_name = item.get('visual_name')
                     self.key, self.reply = self.current_event['meme_id'], self.current_event['reply_text']
                     self.pending_event = None
                     self.frame, self.frame_key = item['image'], (item['cache_key'], item['index'])
@@ -521,6 +787,14 @@ def main():
             if self.closed:
                 return
             self.poll_voice()
+            for event in self.music.poll():
+                self.notice = event['message']
+                if event['type'] == 'started':
+                    self.reply = event['message']
+                    self.draw()
+            self.poll_audio_output()
+            self.poll_voice_recovery()
+            self.poll_standby()
             with player.lock:
                 event = player.event.copy()
             if event['revision'] != self.last_revision:
@@ -628,7 +902,9 @@ def main():
             if self.closed:
                 return
             self.closed = True
-            self.turn.disable()
+            self.audio_output.close()
+            self.standby.close()
+            self.music.close()
             self.stop()
             self.renderer.close()
             if self.server:
@@ -643,6 +919,8 @@ def main():
             window.after(50, finish_close)
 
     desktop = Desktop()
+    from cursor_autohide import CursorAutoHide
+    window.meme_cursor_autohide = CursorAutoHide(window)
     try:
         window.mainloop()
     except KeyboardInterrupt:

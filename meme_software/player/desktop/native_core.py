@@ -1,7 +1,9 @@
 """Native rendering/audio helpers; no browser and no network clients."""
 from contextlib import closing
 from io import BytesIO
+import os
 from pathlib import Path
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -25,8 +27,10 @@ def check_library(root):
     return count
 
 
-def read_asset(player, key):
+def read_asset(player, key, background_id=None):
     if hasattr(player, 'read_native_asset'):
+        if background_id is not None:
+            return player.read_native_asset(key, background_id=background_id)
         return player.read_native_asset(key)
     with closing(player.connect()) as db:
         row = db.execute('SELECT * FROM assets WHERE id=?', (key,)).fetchone()
@@ -79,8 +83,13 @@ class Clip:
 
 
 class Audio:
-    def __init__(self, muted=False):
+    def __init__(self, muted=False, sink_name=None):
+        if sink_name is not None and (
+                not isinstance(sink_name, str) or
+                re.fullmatch(r'[A-Za-z0-9_.:-]+', sink_name) is None):
+            raise ValueError('音频输出设备名称无效。')
         self.muted = muted
+        self.sink_name = sink_name
         self.process = None
         self.errors = []
         self.lock = threading.Lock()
@@ -104,8 +113,16 @@ class Audio:
         if not executable:
             raise ValueError('缺少 aplay（alsa-utils）；当前机器不能播放配套声音。')
         # Send the existing WAV bytes; never record audio or override its sample rate.
-        process = subprocess.Popen([executable, '-q'], stdin=subprocess.PIPE,
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        arguments = [executable, '-q']
+        options = {}
+        if self.sink_name is not None:
+            arguments = [executable, '-D', 'pulse', '-q']
+            environment = os.environ.copy()
+            environment['PULSE_SINK'] = self.sink_name
+            options['env'] = environment
+        process = subprocess.Popen(arguments, stdin=subprocess.PIPE,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                   **options)
         self.process = process
 
         def feed():

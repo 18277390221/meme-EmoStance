@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """中文离线语音识别。录音只经过内存管道，绝不落盘或上传。"""
 from collections import deque
+import errno
 import os
 import shutil
 import subprocess
@@ -9,7 +10,49 @@ import threading
 import time
 
 class UserError(Exception):
-    pass
+    def __init__(self, message, *, reason='asr_error', recoverable=False):
+        super().__init__(message)
+        self.reason = reason
+        self.recoverable = recoverable
+
+
+def capture_failure_reason(detail, error=None):
+    """Classify raw capture diagnostics, never model/dependency error text.
+
+    Missing PCM names and generic EOF/timeouts are ambiguous configuration or
+    driver faults. Only explicit missing-card/device or device I/O evidence
+    allows the UI to wait for the microphone and restart its owned worker.
+    """
+    low = detail.lower()
+    code = getattr(error, 'errno', None)
+    if code in (errno.EACCES, errno.EPERM) or any(
+            word in low for word in ('permission denied', 'operation not permitted')):
+        return 'audio_permission'
+    if code == errno.EBUSY or 'device or resource busy' in low or 'device busy' in low:
+        return 'audio_device_busy'
+    if any(word in low for word in ('overrun', 'xrun')):
+        return 'audio_overrun'
+    if code == errno.EINVAL or any(word in low for word in (
+            'invalid argument', 'sample format', 'rate is not accurate',
+            'channels count', 'sample rate', 'unable to install hw params')):
+        return 'audio_configuration'
+    if code in (errno.ENODEV, errno.ENXIO, errno.EIO) or any(word in low for word in (
+            'no such device', 'cannot find card', 'no soundcards found',
+            'cannot get card index for',
+            'device disconnected', 'device has been disconnected', 'input/output error')):
+        return 'audio_device_unavailable'
+    # ALSA often appends Unknown PCM after failing to resolve a missing USB
+    # card. That generic follow-up must not hide the explicit device failure.
+    if 'unknown pcm' in low:
+        return 'audio_configuration'
+    return 'audio_capture_error'
+
+
+class CaptureError(UserError):
+    def __init__(self, message, *, detail='', error=None, reason=None):
+        reason = reason or capture_failure_reason(detail, error)
+        super().__init__(message, reason=reason,
+                         recoverable=reason == 'audio_device_unavailable')
 
 
 def handle_command(text):
@@ -39,7 +82,8 @@ def require_arecord():
         raise UserError("此录音程序面向树莓派 Linux。当前不是 Linux；可运行 --help 或环境检测脚本。")
     path = shutil.which("arecord")
     if not path:
-        raise UserError("缺少 ALSA 录音工具 arecord。请使用匹配系统的 system-debs 离线安装，不要在树莓派联网下载。")
+        raise UserError("缺少 ALSA 录音工具 arecord。请使用匹配系统的 system-debs 离线安装，不要在树莓派联网下载。",
+                        reason='audio_tool_missing')
     return path
 
 
@@ -81,6 +125,7 @@ class Capture:
         self.format_error = False
         self.strict = strict
         self.stream_error = None
+        self.stream_error_reason = None
         self.normal_finish = False
         self.input_bytes = 0
         self.delivered_bytes = 0
@@ -101,6 +146,7 @@ class Capture:
         self.gap_before_chunk = False
         self.finished = False
         self.read_error = None
+        self.read_exception = None
         self.last_data = time.monotonic()
 
     def __enter__(self):
@@ -122,6 +168,13 @@ class Capture:
         for line in iter(self.proc.stderr.readline, b""):
             text = line.decode("utf-8", errors="replace").strip()
             self.errors.append(text)
+            if capture_failure_reason(text) == 'audio_device_unavailable':
+                with self.condition:
+                    # Do not decode buffered partial speech after losing the
+                    # source, even if an endpoint is hidden in those samples.
+                    self.stream_error = audio_hint(text) + '\n录音流已停止。ALSA: ' + text
+                    self.stream_error_reason = 'audio_device_unavailable'
+                    self.condition.notify_all()
             if "rate is not accurate" in text.lower():
                 with self.condition:
                     self.format_error = True
@@ -130,7 +183,9 @@ class Capture:
                 with self.condition:
                     self.overrun_events += 1
                     if self.strict:
-                        self.stream_error = 'ALSA发生音频溢出，无法保证完整收音；已停止继续识别。请降低负载后重试。'
+                        if self.stream_error_reason != 'audio_device_unavailable':
+                            self.stream_error = 'ALSA发生音频溢出，无法保证完整收音；已停止继续识别。请降低负载后重试。'
+                            self.stream_error_reason = 'audio_overrun'
                     else:
                         self._discard_locked()
                     self.condition.notify_all()
@@ -159,7 +214,9 @@ class Capture:
                         if self.queued_bytes + len(data) > self.max_bytes:
                             self.overflow_events += 1
                             if self.strict:
-                                self.stream_error = '识别积压超过3秒，已停止；没有清空旧音频后假装继续。请降低负载或线程数后重试。'
+                                if self.stream_error_reason != 'audio_device_unavailable':
+                                    self.stream_error = '识别积压超过3秒，已停止；没有清空旧音频后假装继续。请降低负载或线程数后重试。'
+                                    self.stream_error_reason = 'audio_backlog'
                                 # 不清空尚待处理的PCM；拒收本次新增数据并明确记录其字节数。
                                 self.discarded_bytes += len(data)
                                 self.condition.notify_all()
@@ -171,6 +228,11 @@ class Capture:
                     self.condition.notify_all()
         except Exception as exc:
             self.read_error = str(exc)
+            self.read_exception = exc
+            if capture_failure_reason(self.read_error, exc) == 'audio_device_unavailable':
+                with self.condition:
+                    self.stream_error = '录音流已停止。读取错误：' + self.read_error
+                    self.stream_error_reason = 'audio_device_unavailable'
         finally:
             with self.condition:
                 self.finished = True
@@ -180,15 +242,18 @@ class Capture:
         previous_epoch = 0
         while True:
             with self.condition:
-                if self.stream_error and not self.blocks:
-                    raise UserError(self.stream_error)
+                if self.stream_error and (not self.blocks or
+                                          self.stream_error_reason == 'audio_device_unavailable'):
+                    raise CaptureError(self.stream_error, reason=self.stream_error_reason or 'audio_capture_error')
                 if self.format_error:
-                    raise UserError("ALSA 实际采样率与请求值不一致，已停止，避免用错误采样率识别。请使用 plughw 设备。")
+                    raise CaptureError("ALSA 实际采样率与请求值不一致，已停止，避免用错误采样率识别。请使用 plughw 设备。",
+                                       reason='audio_configuration')
                 if not self.blocks:
                     if self.finished:
                         break
                     if time.monotonic() - self.last_data > 15:
-                        raise UserError("15 秒未收到音频数据；静音也应产生 PCM 数据。请检查麦克风和驱动。")
+                        raise CaptureError("15 秒未收到音频数据；静音也应产生 PCM 数据。请检查麦克风和驱动。",
+                                           reason='audio_timeout')
                     self.condition.wait(timeout=0.2)
                     continue
                 data, epoch, queued_at = self.blocks.popleft()
@@ -198,13 +263,17 @@ class Capture:
             self.gap_before_chunk = epoch != previous_epoch
             previous_epoch = epoch
             yield data
-        if self.normal_finish and not self.stream_error and not self.read_error:
-            return
         self.reader.join(timeout=1)
         detail = "\n".join(self.errors)
         if self.read_error:
             detail += "\n读取错误：" + self.read_error
-        raise UserError(audio_hint(detail) + "\n录音流已停止。ALSA: " + (detail or "无错误详情"))
+        # A pause racing with a USB disconnect must not turn truncated buffered
+        # audio into a successful final merely because terminate() was requested.
+        if (self.normal_finish and not self.stream_error and not self.read_error and
+                capture_failure_reason(detail) != 'audio_device_unavailable'):
+            return
+        raise CaptureError(audio_hint(detail) + "\n录音流已停止。ALSA: " + (detail or "无错误详情"),
+                           detail=detail, error=self.read_exception)
 
     def request_finish(self):
         """停止录音子进程，读取线程继续排空管道；chunks再排空已经收到的PCM。"""

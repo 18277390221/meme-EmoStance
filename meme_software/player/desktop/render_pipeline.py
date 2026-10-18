@@ -146,6 +146,7 @@ class RenderEngine:
 
     def _run(self):
         cached = None
+        cached_identity = None
         try:
             while True:
                 with self.condition:
@@ -157,17 +158,25 @@ class RenderEngine:
                     self.pending = None
                 try:
                     before = time.monotonic()
-                    row = self.load_asset(event['meme_id'])
+                    if event.get('background_id') is not None:
+                        row = self.load_asset(event['meme_id'], background_id=event['background_id'])
+                    else:
+                        row = self.load_asset(event['meme_id'])
                     if not self._current(generation):
                         continue
-                    if cached is None or cached.blob != row['visual_blob'] or cached.size != size:
+                    identity = (event['meme_id'], event.get('background_id'),
+                                row.get('source_path'), row.get('updated_at'))
+                    if (cached is None or cached_identity != identity or
+                            cached.blob != row['visual_blob'] or cached.size != size):
                         if cached:
                             cached.close()
                         cached = CachedFrames(row['visual_blob'], *size)
+                        cached_identity = identity
                     index, image, delay = cached.frame(0)
                     duration = float(row['duration_seconds'])
                     self._publish(generation, 'ready', event=event, image=image, index=index,
                                   duration=duration, audio=row['audio_blob'], reflow=reflow,
+                                  visual_name=row.get('visual_name'),
                                   cache_key=cached.cache_key,
                                   prepare_ms=round((time.monotonic() - before) * 1000, 2))
                     del row

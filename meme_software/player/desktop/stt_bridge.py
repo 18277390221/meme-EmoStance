@@ -8,9 +8,11 @@ import subprocess
 import sys
 import threading
 import time
+from asr_selection import selection
 
 
 def find_asr_root(player_root, explicit=None):
+    config = selection()
     if explicit:
         candidates = [Path(explicit).expanduser()]
     else:
@@ -24,7 +26,8 @@ def find_asr_root(player_root, explicit=None):
         if path in matches:
             continue
         if ((path / '.venv/bin/python').is_file() and
-                (path / 'models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01/model.int8.onnx').is_file()):
+                (config['model'] is not None or
+                 (path / 'models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01/model.int8.onnx').is_file())):
             matches.append(path)
     if not matches:
         raise ValueError('未找到已离线安装的STT。请在语音设置中选择已有ASR目录，或先离线安装配套stt。')
@@ -37,6 +40,13 @@ class SpeechProcess:
     def __init__(self, worker=None, on_final=None):
         self.worker = Path(worker or Path(__file__).with_name('stt_worker.py'))
         self.on_final = on_final
+        self.on_speech_start = None
+        self.on_speech_cancel = None
+        self.on_music_stop = None
+        self.on_music_utterance = None
+        self.on_standby_wake = None
+        self.on_standby_utterance = None
+        self.on_standby_sleep = None
         self.process = None
         self.thread = None
         self.lock = threading.Lock()
@@ -72,7 +82,7 @@ class SpeechProcess:
     def running(self):
         return bool(self.thread and self.thread.is_alive())
 
-    def start(self, asr_root, device, python=None, wav=None, paused=False, end_silence=1.2):
+    def start(self, asr_root, device, python=None, wav=None, paused=False, end_silence=.7):
         if self.running():
             raise ValueError('已有本软件的收音实例，请先停止。')
         python = Path(python) if python else Path(asr_root) / '.venv/bin/python'
@@ -89,6 +99,10 @@ class SpeechProcess:
         self.accepting = True
         self.overflow = False
         self.last_activity = 0.0
+        with self.lock:
+            # The prior reader has exited before a new worker can start. Its
+            # queued stopped/exited events must not disable the fresh worker.
+            self.events.clear()
         self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE, text=True, encoding='utf-8',
                                         env=dict(os.environ, PYTHONUTF8='1', PYTHONDONTWRITEBYTECODE='1'),
@@ -110,7 +124,10 @@ class SpeechProcess:
                     try:
                         event = json.loads(line)
                         if not isinstance(event, dict) or event.get('type') not in {
-                            'loading', 'listening', 'paused', 'activity', 'final', 'error', 'stats', 'stopped'}:
+                            'loading', 'listening', 'paused', 'activity', 'utterance_started',
+                            'utterance_cancelled', 'final', 'music_stop', 'music_utterance',
+                            'standby_wake', 'standby_utterance', 'standby_sleep',
+                            'error', 'stats', 'stopped'}:
                             raise ValueError('unknown event')
                         if event['type'] == 'error':
                             failed = True
@@ -120,8 +137,22 @@ class SpeechProcess:
                             self.last_activity = 0.0
                         elif event['type'] == 'listening':
                             self.paused = False
+                        if event['type'] == 'utterance_started' and self.on_speech_start:
+                            self.on_speech_start()
+                        elif event['type'] == 'utterance_cancelled' and self.on_speech_cancel:
+                            self.on_speech_cancel()
                         if event['type'] == 'final' and self.on_final:
                             event['request_id'] = self.on_final(event.get('text'))
+                        elif event['type'] == 'music_stop' and self.on_music_stop:
+                            self.on_music_stop(event.get('token'))
+                        elif event['type'] == 'music_utterance' and self.on_music_utterance:
+                            self.on_music_utterance(event.get('token'))
+                        elif event['type'] == 'standby_wake' and self.on_standby_wake:
+                            self.on_standby_wake(event.get('token'))
+                        elif event['type'] == 'standby_utterance' and self.on_standby_utterance:
+                            self.on_standby_utterance(event.get('token'))
+                        elif event['type'] == 'standby_sleep' and self.on_standby_sleep:
+                            self.on_standby_sleep(event.get('token'))
                         self.publish(event)
                     except (ValueError, TypeError):
                         failed = True
@@ -143,6 +174,22 @@ class SpeechProcess:
 
     def request_stop(self):
         self.command('stop')
+
+    def music_control(self, enabled, token=None):
+        if enabled:
+            if not isinstance(token, str) or not token or any(char.isspace() for char in token):
+                raise ValueError('音乐控制需要有效的播放编号。')
+            self.command('music_control on ' + token)
+        else:
+            self.command('music_control off')
+
+    def standby_control(self, enabled, token=None):
+        if enabled:
+            if not isinstance(token, str) or not token or any(char.isspace() for char in token):
+                raise ValueError('待机控制需要有效的会话编号。')
+            self.command('standby_control on ' + token)
+        else:
+            self.command('standby_control off')
 
     def command(self, name):
         process = self.process

@@ -64,12 +64,14 @@ def listen_once(gate, epoch, command, make_decoder, send, capture_factory):
                     try:
                         capture.request_finish()
                     except OSError as error:
-                        send('error', message='暂停麦克风失败：' + str(error))
+                        send('error', message='暂停麦克风失败：' + str(error),
+                             reason='audio_control_error', recoverable=False)
                     return
         watcher = threading.Thread(target=monitor, daemon=True)
         watcher.start()
         last_activity = last_stats = 0.0
         heard = False
+        speech_started_at = None
         try:
             for block in capture.chunks():
                 if not gate.current(epoch):
@@ -82,6 +84,11 @@ def listen_once(gate, epoch, command, make_decoder, send, capture_factory):
                     send('listening')
                 decoder.feed(block, 16000)
                 now = time.monotonic()
+                if getattr(decoder, 'utterance_seen', False) and speech_started_at is None:
+                    speech_started_at = now
+                if speech_started_at is not None and now - speech_started_at >= 25:
+                    # Do not turn a long unfinished fragment into a forced final.
+                    gate.command('pause')
                 if now - last_activity >= .2:
                     send('activity')
                     last_activity = now
@@ -99,4 +106,6 @@ def listen_once(gate, epoch, command, make_decoder, send, capture_factory):
     send('paused', pause_id=gate.closed())  # ALSA exited before any final/send.
     if final_text and not gate.stopped:
         send('final', text=final_text[0])
+    elif getattr(decoder, 'utterance_seen', False) and not gate.stopped:
+        send('utterance_cancelled', message='本句话未完整结束，已释放收音；请重说。')
     return statistics

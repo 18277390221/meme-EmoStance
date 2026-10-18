@@ -1,5 +1,6 @@
-"""Application-side adapter for communication/ JSONL TCP protocol; no audio upload."""
+"""Version 2 JSONL client: readiness, one request, reconnect status and playback ACK."""
 from collections import deque
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -37,15 +38,12 @@ def encode(message):
 
 
 def parse_reply(message):
-    """Return a structured cat reply; ordinary legacy acknowledgements return None."""
     if 'meme_id' in message or 'reply_text' in message:
         payload = message
     else:
         text = message.get('text')
         if not isinstance(text, str):
             raise ValueError('服务器result需要text字符串或meme_id/reply_text字段。')
-        # The team's callback returns str. JSON inside result.text requires no
-        # changes to their TCP module. Plain echoes must never become replies.
         if not text.lstrip().startswith(('{', '[')):
             return None
         try:
@@ -59,20 +57,48 @@ def parse_reply(message):
         raise ValueError('服务器meme_id需要是本地素材的完整编号，例如meme-0157。')
     if not isinstance(text, str) or not text.strip() or len(text) > 2000:
         raise ValueError('服务器reply_text需要是1到2000字的回复文字。')
-    return {'meme_id': key, 'reply_text': text.strip()}
+    conversation_id = message.get('conversation_id', payload.get('conversation_id'))
+    has_conversation_id = 'conversation_id' in message or 'conversation_id' in payload
+    if has_conversation_id and (not isinstance(conversation_id, str) or
+            not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', conversation_id)):
+        raise ValueError('服务器conversation_id格式不正确。')
+    reply = {'meme_id': key, 'reply_text': text.strip()}
+    if conversation_id is not None:
+        reply['conversation_id'] = conversation_id
+    return reply
 
 
 class ServerLink:
-    def __init__(self):
+    def __init__(self, on_ready=None):
         self.lock = threading.Lock()
         self.stop = threading.Event()
-        self.thread = None
-        self.socket = None
+        self.thread = self.socket = None
         self.connected = False
+        self.model_ready = False
+        self.on_ready = on_ready
+        self.session_id = uuid.uuid4().hex
+        self.server_instance_id = None
+        self.model_version = None
+        self.conversation_id = None
         self.waiting = {}
-        self.outgoing = queue.Queue(maxsize=8)
+        self.awaiting_playback = None
+        self.playback_receipts = {}
+        self.outgoing = queue.Queue(maxsize=32)
         self.events = deque(maxlen=256)
-        self.last_reply_at = 0.0
+        self.completed = deque(maxlen=1024)
+        self.completed_ids = set()
+
+    @property
+    def recovering(self):
+        with self.lock:
+            return bool(self.waiting)
+
+    def _ready(self, value):
+        with self.lock:
+            self.connected = self.model_ready = bool(value)
+        # Never call application callbacks with the network lock held.
+        if self.on_ready:
+            self.on_ready(bool(value))
 
     def event(self, kind, **values):
         with self.lock:
@@ -84,20 +110,61 @@ class ServerLink:
             self.events.clear()
         return result
 
+    def _queue_control(self, message):
+        with self.lock:
+            if not self.connected or not self.model_ready:
+                return False
+            try:
+                self.outgoing.put_nowait(message)
+            except queue.Full:
+                self.events.append({'type': 'reply_error', 'message': '通信控制队列已满，正在重新连接。'})
+                sock = self.socket
+                if sock:
+                    try:
+                        sock.shutdown(socket.SHUT_RDWR)
+                    except OSError:
+                        pass
+                return False
+            return True
+
+    def speech_start(self):
+        return self._queue_control({'type': 'speech_start'})
+
+    def speech_cancel(self):
+        return self._queue_control({'type': 'speech_cancel'})
+
+    def playback_done(self, request_id, failed=False):
+        if not isinstance(request_id, str) or not request_id:
+            return False
+        control = 'playback_failed' if failed else 'playback_done'
+        with self.lock:
+            if request_id not in self.completed_ids and request_id != self.awaiting_playback:
+                return False  # An old boot's playback is no longer a server lease.
+            self.playback_receipts[request_id] = control
+            if self.awaiting_playback == request_id:
+                self.awaiting_playback = None
+        # Keep this receipt until control_ack, including across a dropped send.
+        return self._queue_control({'type': control, 'id': request_id})
+
     def submit(self, text):
         if not isinstance(text, str) or not text.strip() or len(text) > 2000:
             self.event('unsent', message='识别文字为空或过长，未发送。')
             return None
         with self.lock:
-            if not self.connected:
-                self.events.append({'type': 'unsent', 'message': '服务器未连接，本句话未发送；连接后请重说。'})
+            if not self.connected or not self.model_ready:
+                self.events.append({'type': 'unsent', 'message': '服务器尚未就绪，本句话未发送；就绪后请重说。'})
                 return None
-            if len(self.waiting) >= 8:
-                self.events.append({'type': 'unsent', 'message': '有8句话等待服务器确认，请稍后重说。'})
+            if self.waiting or self.awaiting_playback:
+                self.events.append({'type': 'unsent', 'message': '上一轮还未完成，请稍候。'})
                 return None
             key = uuid.uuid4().hex
-            self.waiting[key] = time.monotonic()
-            self.outgoing.put_nowait({'type': 'request', 'id': key, 'text': text})
+            self.waiting[key] = {'at': time.monotonic(), 'query_at': time.monotonic(), 'accepted': False}
+            try:
+                self.outgoing.put_nowait({'type': 'request', 'id': key, 'text': text.strip(), 'end': True})
+            except queue.Full:
+                del self.waiting[key]
+                self.events.append({'type': 'unsent', 'message': '通信繁忙，本句话未发送，请重说。'})
+                return None
         return key
 
     def start(self, host, port, token_file):
@@ -113,11 +180,108 @@ class ServerLink:
         self.thread = threading.Thread(target=self._run, args=(host, port, token), daemon=True)
         self.thread.start()
 
+    def _handshake(self, hello, send):
+        if (hello.get('type') != 'hello_ok' or hello.get('protocol_version') != 2 or
+                hello.get('model_ready') is not True or hello.get('max_inflight') != 1 or
+                not isinstance(hello.get('server_instance_id'), str) or not hello['server_instance_id'] or
+                not isinstance(hello.get('model_version'), str) or
+                hello.get('session_id') != self.session_id):
+            raise ValueError('服务器尚未提供版本2模型就绪握手，请更新服务器后重试。')
+        epoch = hello['server_instance_id']
+        with self.lock:
+            changed = self.server_instance_id is not None and self.server_instance_id != epoch
+            old_ids = list(self.waiting)
+            if changed:
+                self.waiting.clear()
+                self.playback_receipts.clear()
+                self.awaiting_playback = None
+                self.completed.clear()
+                self.completed_ids.clear()
+                self.conversation_id = None
+            self.server_instance_id = epoch
+            self.model_version = hello['model_version']
+            pending = list(self.waiting)
+            receipts = list(self.playback_receipts.items())
+        if changed:
+            self.event('server_restarted', ids=old_ids,
+                       message='服务器已重新启动，旧请求不自动重发；请在收音恢复后重说。')
+        for key, control in receipts:
+            send({'type': control, 'id': key})
+        for key in pending:
+            send({'type': 'request_status', 'id': key})
+        if not pending and self.awaiting_playback is None:
+            send({'type': 'speech_cancel'})  # Release a pre-disconnect unfinished phrase.
+        self._ready(True)
+        self.event('connected', model_version=self.model_version, recovering=bool(pending))
+
+    def _received(self, message, send):
+        kind, key = message['type'], message.get('id')
+        if kind == 'accepted':
+            if not isinstance(key, str):
+                raise ValueError('bad accepted id')
+            with self.lock:
+                item = self.waiting.get(key)
+                if item:
+                    item['accepted'] = True
+                    item['query_at'] = time.monotonic()
+            if item:
+                self.event('accepted', id=key, status=message.get('status', 'processing'))
+        elif kind in ('result', 'error'):
+            if not isinstance(key, str):
+                # Control failures have no request id; show them without dropping an inference.
+                if kind == 'error':
+                    self.event('control_error', message='服务器未能执行收音/播放状态更新。', code=message.get('code'))
+                    return
+                raise ValueError('bad result id')
+            with self.lock:
+                if kind == 'error' and key in self.playback_receipts and key not in self.waiting:
+                    self.playback_receipts.pop(key, None)
+                item = self.waiting.pop(key, None)
+                duplicate = key in self.completed_ids
+                if item is not None and not duplicate:
+                    if len(self.completed) == self.completed.maxlen:
+                        self.completed_ids.discard(self.completed[0])
+                    self.completed.append(key)
+                    self.completed_ids.add(key)
+                    if kind == 'result':
+                        self.awaiting_playback = key
+            if item is None or duplicate:
+                return
+            if kind == 'error':
+                unknown = message.get('code') == 'unknown_request'
+                self.event('server_error', id=key, code=message.get('code'),
+                           message=('服务器已无本句话的处理记录，未自动重发，请重说。' if unknown else
+                                    '服务器未能处理本句话，请稍后重说。'))
+                return
+            try:
+                reply = parse_reply(message)
+                if reply is None:
+                    raise ValueError('服务器只返回了普通确认，没有模型回复。')
+                if 'conversation_id' not in reply:
+                    # Older v2 servers cannot identify an idle reset. Keep one
+                    # stable background for their whole boot, never guess by time.
+                    identity = str(self.server_instance_id) + ':' + self.session_id
+                    reply['conversation_id'] = 'legacy-' + hashlib.sha256(identity.encode()).hexdigest()
+            except ValueError as error:
+                self.playback_done(key, failed=True)
+                self.event('reply_error', id=key, message=str(error))
+                return
+            with self.lock:
+                self.conversation_id = reply['conversation_id']
+            self.event('reply', id=key, **reply)
+        elif kind == 'control_ack':
+            if message.get('control') in ('playback_done', 'playback_failed'):
+                with self.lock:
+                    self.playback_receipts.pop(key, None)
+        elif kind == 'ping':
+            send({'type': 'pong'})
+        elif kind not in ('pong', 'push'):
+            raise ValueError('unexpected server frame')
+
     def _run(self, host, port, token):
         backoff = 1
         while not self.stop.is_set():
             sock = None
-            authenticated = False
             try:
                 self.event('connecting')
                 sock = socket.create_connection((host, port), timeout=3)
@@ -151,25 +315,21 @@ class ServerLink:
                     raise EOFError()
 
                 def send(message):
-                    # Only this thread writes socket frames; heartbeats cannot interleave.
+                    # One socket owner serializes request/control/heartbeat frames.
                     sock.settimeout(3)
                     try:
                         sock.sendall(encode(message))
                     finally:
                         sock.settimeout(.1)
 
-                send({'type': 'hello', 'name': 'meme-player', 'token': token})
+                send({'type': 'hello', 'name': 'meme-player', 'token': token,
+                      'protocol_version': 2, 'session_id': self.session_id})
                 hello = read_frame(time.monotonic() + 10)
                 if hello['type'] == 'error' and hello.get('code') == 'auth_failed':
                     self.event('auth_error', message='服务器认证失败，请核对两端是否使用同一份.env。')
                     return
-                if hello['type'] != 'hello_ok':
-                    raise ValueError('handshake')
-                with self.lock:
-                    self.connected = True
-                authenticated = True
+                self._handshake(hello, send)
                 backoff = 1
-                self.event('connected')
                 ping_at = time.monotonic() + 15
                 last_read = time.monotonic()
                 while not self.stop.is_set():
@@ -179,67 +339,39 @@ class ServerLink:
                         request = None
                     if request:
                         send(request)
-                        self.event('sent', id=request['id'])
+                        if request['type'] == 'request':
+                            self.event('sent', id=request['id'])
                     now = time.monotonic()
                     if now >= ping_at:
                         send({'type': 'ping'})
                         ping_at = now + 15
                     with self.lock:
-                        expired = [key for key, when in self.waiting.items() if now - when >= 60]
-                        for key in expired:
-                            del self.waiting[key]
-                    if expired:
-                        self.event('unconfirmed', count=len(expired), message='服务器60秒未确认，未自动重发；可稍后重新说。')
+                        queries = [key for key, item in self.waiting.items() if now - item['query_at'] >= 30]
+                        for key in queries:
+                            self.waiting[key]['query_at'] = now
+                    for key in queries:
+                        send({'type': 'request_status', 'id': key})
                     if now - last_read >= 60:
                         raise TimeoutError('idle')
-                    # Try one receive cycle; retain fragmented/multiple frames.
                     try:
                         message = read_frame(min(time.monotonic() + .12, last_read + 60))
                     except TimeoutError:
                         continue
                     last_read = time.monotonic()
-                    kind, key = message['type'], message.get('id')
-                    if kind in ('result', 'error'):
-                        if not isinstance(key, str):
-                            raise ValueError('bad result id')
-                        with self.lock:
-                            requested_at = self.waiting.pop(key, None)
-                        if requested_at is not None:
-                            if kind == 'result':
-                                try:
-                                    reply = parse_reply(message)
-                                except ValueError as error:
-                                    self.event('reply_error', message=str(error))
-                                    continue
-                                if reply is not None:
-                                    if requested_at < self.last_reply_at:
-                                        self.event('stale_reply', message='较早一句的回复晚于新回复到达，已忽略。')
-                                        continue
-                                    self.last_reply_at = requested_at
-                                    self.event('reply', id=key, **reply)
-                                    continue
-                                self.event('ack', id=key)
-                            else:
-                                self.event('server_error', message='服务器未能接收/处理本句话，请稍后重说。')
-                    elif kind == 'ping':
-                        send({'type': 'pong'})
-                    elif kind not in ('pong', 'push'):
-                        raise ValueError('unexpected server frame')
-            except (OSError, EOFError, ValueError, RecursionError):
+                    self._received(message, send)
+            except (OSError, EOFError, ValueError, RecursionError) as error:
                 if not self.stop.is_set():
-                    self.event('disconnected', message='服务器未连接，正在重连。请确认TCP 9000服务已启动。')
+                    text = str(error) if isinstance(error, ValueError) and '版本2' in str(error) else '服务器未连接，麦克风已暂停，正在重连。'
+                    self.event('disconnected', message=text)
             finally:
+                self._ready(False)
+                # Request IDs survive disconnect; query status instead of resending text.
                 with self.lock:
-                    self.connected = False
-                    count = len(self.waiting)
-                    self.waiting.clear()
                     while True:
                         try:
                             self.outgoing.get_nowait()
                         except queue.Empty:
                             break
-                if count and not self.stop.is_set():
-                    self.event('unconfirmed', count=count, message='连接中断，部分文字是否送达未知，不自动重发。')
                 if sock:
                     sock.close()
                 self.socket = None
@@ -249,14 +381,7 @@ class ServerLink:
         self.event('closed')
 
     def close(self, grace=2):
-        # ASR is stopped/drained first by the caller; allow its final sentence to be confirmed.
-        deadline = time.monotonic() + grace
-        while time.monotonic() < deadline:
-            with self.lock:
-                waiting = bool(self.waiting) and self.connected
-            if not waiting:
-                break
-            time.sleep(.03)
+        self._ready(False)
         self.stop.set()
         sock = self.socket
         if sock:

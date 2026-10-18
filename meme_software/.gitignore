@@ -14,3 +14,13 @@ models/
 *.onnx
 *.whl
 display-diagnostics.json
+
+*.log
+*.tar.gz
+*.zip
+*.mp3
+*.flac
+*.ogg
+*.mp4
+*.wav
+*.gif

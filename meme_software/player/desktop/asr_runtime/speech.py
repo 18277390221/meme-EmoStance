@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""离线中文流式识别：Sherpa-ONNX + 本地Zipformer INT8模型。"""
+"""离线流式识别：Sherpa-ONNX，本地Zipformer或中英Paraformer INT8。"""
 import argparse
 import json
 import signal
@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODEL_NAMES = {
     "standard": "sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30",
     "lite": "sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01",
+    "paraformer": "paraformer",
 }
 
 
@@ -46,8 +47,13 @@ class PartialDisplay:
 
 def model_files(folder, profile):
     folder = Path(folder).expanduser().resolve()
-    names = ["tokens.txt"] + (["encoder.int8.onnx", "decoder.onnx", "joiner.int8.onnx"]
-                              if profile == "standard" else ["model.int8.onnx"])
+    if profile not in MODEL_NAMES:
+        raise UserError('未知ASR模型类型：' + str(profile))
+    names = ["tokens.txt"] + {
+        'standard': ["encoder.int8.onnx", "decoder.onnx", "joiner.int8.onnx"],
+        'lite': ["model.int8.onnx"],
+        'paraformer': ["encoder.int8.onnx", "decoder.int8.onnx"],
+    }[profile]
     for name in names:
         if not (folder / name).is_file():
             raise UserError("本地模型缺失：%s。请保留完整模型目录，或用--model指定对应profile的目录。" % (folder / name))
@@ -69,26 +75,46 @@ def create_recognizer(module, folder, profile, threads, endpoint_silence=None):
         return module.OnlineRecognizer.from_transducer(
             encoder=files["encoder.int8.onnx"], decoder=files["decoder.onnx"],
             joiner=files["joiner.int8.onnx"], **options)
+    if profile == 'paraformer':
+        # Paraformer token/blank timing does not provide reliable CTC endpoints.
+        # The player uses PCM silence and explicitly flushes the encoder tail.
+        options['enable_endpoint_detection'] = False
+        return module.OnlineRecognizer.from_paraformer(
+            encoder=files['encoder.int8.onnx'], decoder=files['decoder.int8.onnx'], **options)
     return module.OnlineRecognizer.from_zipformer2_ctc(model=files["model.int8.onnx"], **options)
 
 
 class Decoder:
-    def __init__(self, recognizer, numpy, output=print, handler=handle_command, reviewer=None, partial=None):
+    def __init__(self, recognizer, numpy, output=print, handler=handle_command, reviewer=None, partial=None,
+                 profile='lite', endpoint_silence=.5, silence_rms=.008, on_speech_start=None):
         self.recognizer, self.np = recognizer, numpy
         self.output, self.handler = output, handler
         self.reviewer = reviewer
         self.partial = partial
+        self.on_speech_start = on_speech_start
+        self.utterance_seen = False
+        self.profile = profile
+        self.endpoint_silence = endpoint_silence
+        self.silence_rms = silence_rms
+        self.quiet_samples = self.voiced_samples = 0
         self.stream = recognizer.create_stream()
         self.inference_seconds = 0.0
         self.audio_seconds = 0.0
         self.gaps = 0
         self.input_rate = None
 
+    def _mark_speech(self):
+        if not self.utterance_seen:
+            self.utterance_seen = True
+            if self.on_speech_start:
+                self.on_speech_start()
+
     def emit(self):
         if self.partial:
             self.partial.clear()
         text = self.recognizer.get_result(self.stream).strip()
         if text:
+            self._mark_speech()
             self.output(text, flush=True)
             if self.reviewer:
                 review = self.reviewer(text)
@@ -110,7 +136,25 @@ class Decoder:
         samples = self.np.frombuffer(data, dtype="<i2").astype(self.np.float32) / 32768.0
         self.stream.accept_waveform(rate, samples)
         self.decode_ready()
-        if self.recognizer.is_endpoint(self.stream):
+        if self.recognizer.get_result(self.stream).strip():
+            self._mark_speech()
+        endpoint = False
+        if self.profile == 'paraformer':
+            if len(samples) and float(self.np.sqrt(self.np.mean(samples * samples))) >= self.silence_rms:
+                self.quiet_samples = 0
+                self.voiced_samples += len(samples)
+                if self.voiced_samples >= round(rate * .06):
+                    self._mark_speech()
+            else:
+                self.quiet_samples += len(samples)
+            endpoint = (self.voiced_samples >= round(rate * .06) and
+                        self.quiet_samples >= round(rate * self.endpoint_silence))
+            if endpoint:
+                self._flush_tail(rate)
+                self.emit()
+                self.stream = self.recognizer.create_stream()
+                self.quiet_samples = self.voiced_samples = 0
+        elif self.recognizer.is_endpoint(self.stream):
             self.emit()
             self.recognizer.reset(self.stream)
         elif self.partial and self.partial.due():
@@ -123,19 +167,30 @@ class Decoder:
             self.partial.clear()
         # 创建新流清除编码器上下文，不能把断流两侧拼成一句或指令。
         self.stream = self.recognizer.create_stream()
+        self.quiet_samples = self.voiced_samples = 0
         self.gaps += 1
         print("警告：音频有缺失，本句已丢弃，请重说。可加--stats查看耗时，或用--profile lite测试轻量模式。",
               file=sys.stderr, flush=True)
 
     def finish(self):
+        started = time.monotonic()
         rate = self.input_rate or 16000
-        self.stream.accept_waveform(rate, self.np.zeros(rate // 2, dtype=self.np.float32))
+        self._flush_tail(rate)
+        self.emit()
+        self.inference_seconds += time.monotonic() - started
+
+    def _flush_tail(self, rate):
+        # Paraformer needs enough padding to flush the last encoder chunk.
+        # PCM silence or file completion flushes the tail; live pause/stop never does.
+        padding = .66 if self.profile == 'paraformer' else .5
+        self.stream.accept_waveform(rate, self.np.zeros(round(rate * padding), dtype=self.np.float32))
         self.stream.input_finished()
         self.decode_ready()
-        self.emit()
 
     def stats(self):
-        return {"engine": "sherpa-onnx", "audio_seconds": round(self.audio_seconds, 2),
+        return {"engine": "sherpa-onnx", "profile": self.profile, "provider": "cpu",
+                "endpoint": "pcm-energy-silence" if self.profile == 'paraformer' else 'recognizer',
+                "audio_seconds": round(self.audio_seconds, 2),
                 "inference_seconds": round(self.inference_seconds, 2),
                 "rtf": round(self.inference_seconds / self.audio_seconds, 3) if self.audio_seconds else None,
                 "gap_events": self.gaps}
@@ -173,7 +228,7 @@ def main(argv=None):
         print("加载本地中文模型（%s），不联网……" % args.profile, file=sys.stderr, flush=True)
         decoder = Decoder(create_recognizer(sherpa_onnx, folder, args.profile, args.threads), np,
                           reviewer=review_documents if args.text_domain == 'documents' else None,
-                          partial=partial)
+                          partial=partial, profile=args.profile, endpoint_silence=.8)
         if args.wav:
             with wave.open(str(args.wav), "rb") as stream:
                 if stream.getnchannels() != 1 or stream.getsampwidth() != 2 or stream.getcomptype() != "NONE":

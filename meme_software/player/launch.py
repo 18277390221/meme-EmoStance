@@ -175,13 +175,28 @@ class Player:
         if not isinstance(request_id, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', request_id):
             raise PlayerError('request_id格式不正确')
         with self.lock:
+            conversation_id = body.get('conversation_id', getattr(self, 'conversation_id', None))
+            background_id = body.get('background_id', getattr(self, 'background_id', None))
+        if conversation_id is not None and (not isinstance(conversation_id, str) or
+                not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', conversation_id)):
+            raise PlayerError('conversation_id格式不正确')
+        if background_id is not None and (type(background_id) is not int or not 1 <= background_id <= 10):
+            raise PlayerError('background_id需要是1到10的整数')
+        snapshot = {}
+        if conversation_id is not None:
+            snapshot['conversation_id'] = conversation_id
+        if background_id is not None:
+            snapshot['background_id'] = background_id
+        with self.lock:
             if request_id in self.requests:
                 previous = self.requests[request_id]
                 if previous['meme_id'] != key or previous['reply_text'] != text.strip():
                     raise PlayerError('同一request_id不能对应不同回复')
+                if any(field in body and previous.get(field) != value for field, value in snapshot.items()):
+                    raise PlayerError('同一request_id不能对应不同对话或背景')
                 return previous.copy()
             self.event = {'revision': self.event['revision'] + 1, 'type': 'response',
-                          'request_id': request_id, 'meme_id': key, 'reply_text': text.strip()}
+                          'request_id': request_id, 'meme_id': key, 'reply_text': text.strip(), **snapshot}
             self.requests[request_id] = self.event.copy()
             if len(self.requests) > 200:
                 del self.requests[next(iter(self.requests))]
@@ -270,7 +285,11 @@ class Handler(SimpleHTTPRequestHandler):
             elif path == '/api/assets/export':
                 self.json_response(self.player.export_pack())
             elif path == '/api/health':
-                self.json_response({'status': 'ready', 'mode': 'local-demo', 'storage': 'data/assets.sqlite3'})
+                state = {'status': 'ready', 'mode': 'local-demo', 'storage': 'data/assets.sqlite3'}
+                communication_status = getattr(self.player, 'communication_status', None)
+                if callable(communication_status):
+                    state['communication'] = communication_status()
+                self.json_response(state)
             elif path.startswith('/user-media/'):
                 match = re.fullmatch(r'/user-media/(' + ASSET_ID + r')/(visual|audio)', path)
                 result = self.player.media(*match.groups()) if match else None
@@ -311,6 +330,24 @@ class Handler(SimpleHTTPRequestHandler):
                 self.json_response(self.player.respond(body))
             elif path == '/api/stop':
                 self.json_response(self.player.stop())
+            elif path == '/api/music':
+                command = getattr(self.player, 'music_command', None)
+                if not callable(command):
+                    raise PlayerError('本机音乐功能不可用。')
+                try:
+                    result = command(body)
+                except ValueError as error:
+                    raise PlayerError(str(error)) from error
+                self.json_response(result)
+            elif path == '/api/standby':
+                command = getattr(self.player, 'standby_command', None)
+                if not callable(command):
+                    raise PlayerError('本机待机功能不可用。')
+                try:
+                    result = command(body)
+                except ValueError as error:
+                    raise PlayerError(str(error)) from error
+                self.json_response(result)
             else:
                 self.json_response({'error': '接口不存在'}, 404)
         except (PlayerError, ValueError, UnicodeError, RecursionError) as error:

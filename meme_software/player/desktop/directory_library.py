@@ -1,9 +1,11 @@
-"""Read-only, exact-ID mapping for the team's sucai_meme/meme_gif media."""
+"""Exact meme IDs, conversation-stable background GIFs, and original WAVs."""
 import base64
 from contextlib import closing
 from io import BytesIO
 from pathlib import Path
+import os
 import re
+import random
 import threading
 import wave
 
@@ -13,6 +15,8 @@ from launch import Player, PlayerError
 # Previously removed silent media stay excluded; never silently restore them.
 EXCLUDED = frozenset({'meme-0056', 'meme-0153', 'meme-0175', 'meme-0176', 'meme-0179'})
 FILE_ID = re.compile(r'^(meme-\d{4})(?:-.+)?\.gif$', re.IGNORECASE)
+BACKGROUND_FILE_ID = re.compile(
+    r'^(meme-\d{4})(?:-.+)?-([1-9]|10)\.gif$', re.IGNORECASE)
 
 
 def gif_duration(blob):
@@ -81,21 +85,93 @@ def find_directory(root, explicit=None):
 
 
 class DirectoryAssets:
-    def __init__(self, directory):
-        self.directory = Path(directory).resolve()
+    """Original IDs/audio with a separate, mandatory background GIF directory.
+
+    Only background numbers covering every allowed original meme can be chosen.
+    A selected background is never silently replaced when a file disappears.
+    """
+    def __init__(self, directory, background_directory=None, choice=None):
+        self.directory = Path(directory).expanduser().resolve()
+        background = (Path(background_directory).expanduser() if background_directory is not None
+                      else self.directory.parent / 'meme_gif_background')
+        if background.is_symlink():
+            raise PlayerError('背景目录不能是符号链接：' + str(background))
+        self.background_directory = background.resolve()
         self.lock = threading.RLock()
         self.index = {}
+        self.backgrounds = {}
+        self.available_background_ids = ()
+        self._background_id = None
+        self._conversation_id = None
+        self._index_signature = None
+        self._choice = choice or random.choice
         self.refresh()
+        self._background_id = self._choose_background()
 
-    def safe_file(self, path):
-        if path.is_symlink() or not path.resolve().is_relative_to(self.directory):
+    def safe_file(self, path, directory=None):
+        directory = self.directory if directory is None else directory
+        if path.is_symlink() or not path.resolve().is_relative_to(directory):
             raise PlayerError('素材文件不能是符号链接或位于指定目录外：' + path.name)
         if not path.is_file():
             raise PlayerError('素材文件不存在：' + path.name)
         return path
 
+    @property
+    def background_id(self):
+        with self.lock:
+            return self._background_id
+
+    @property
+    def conversation_id(self):
+        with self.lock:
+            return self._conversation_id
+
+    def _choose_background(self):
+        selected = self._choice(self.available_background_ids)
+        if type(selected) is not int or selected not in self.available_background_ids:
+            raise PlayerError('随机选择的背景编号不可用。')
+        return selected
+
+    def begin_conversation(self, conversation_id):
+        if not isinstance(conversation_id, str) or not conversation_id or len(conversation_id) > 256:
+            raise PlayerError('新对话需要有效的conversation_id。')
+        with self.lock:
+            self.refresh()
+            if conversation_id != self._conversation_id:
+                self._background_id = self._choose_background()
+                self._conversation_id = conversation_id
+            self._validate_background(self._background_id)
+            return self._background_id
+
+    def _validate_background(self, background_id):
+        if type(background_id) is not int or not 1 <= background_id <= 10:
+            raise PlayerError('背景编号必须是1到10的整数。')
+        if background_id not in self.available_background_ids:
+            raise PlayerError('背景编号缺少部分表情，无法保持本轮背景一致：' + str(background_id))
+        return background_id
+
+    def _directory_signature(self):
+        values = []
+        for directory in (self.directory, self.background_directory):
+            if directory.is_symlink():
+                raise PlayerError('素材目录不能是符号链接：' + str(directory))
+            try:
+                state = directory.stat()
+                names = frozenset(os.listdir(directory))
+            except OSError as error:
+                raise PlayerError('无法读取素材目录：' + str(directory)
+                                  + '；不会回退播放原始GIF。') from error
+            values.append((state.st_dev, state.st_ino, state.st_mtime_ns, state.st_ctime_ns, names))
+        return tuple(values)
+
     def refresh(self):
         with self.lock:
+            # Listing names also detects rapid changes on filesystems whose
+            # directory timestamps have coarse resolution. Avoid resolving and
+            # checking every variant unless this lightweight snapshot changes.
+            signature = self._directory_signature()
+            if self._index_signature == signature and self.index:
+                return
             index = {}
             try:
                 paths = sorted(self.directory.iterdir())
@@ -119,27 +195,67 @@ class DirectoryAssets:
                 index[key] = (path, audio)
             if not index:
                 raise PlayerError('表情目录没有可用的 meme-四位编号-名称.gif 文件：' + str(self.directory))
-            self.index = index
+            try:
+                background_paths = sorted(self.background_directory.iterdir())
+            except OSError as error:
+                raise PlayerError('无法读取带背景表情目录：' + str(self.background_directory)
+                                  + '；不会回退播放原始GIF。') from error
+            backgrounds = {}
+            for path in background_paths:
+                match = BACKGROUND_FILE_ID.fullmatch(path.name)
+                if not match:
+                    continue
+                key, background_id = match[1].lower(), int(match[2])
+                if key not in index:
+                    continue
+                self.safe_file(path, self.background_directory)
+                pair = (key, background_id)
+                if pair in backgrounds:
+                    raise PlayerError('同一表情和背景编号存在重复文件：' + key + '-' + str(background_id))
+                backgrounds[pair] = path
+            for (key, background_id), path in backgrounds.items():
+                expected = index[key][0].stem + '-' + str(background_id) + '.gif'
+                if path.name != expected:
+                    raise PlayerError('带背景GIF名称与原表情不对应：' + path.name + '；应为' + expected)
+            complete = tuple(background_id for background_id in range(1, 11)
+                             if all((key, background_id) in backgrounds for key in index))
+            if not complete:
+                raise PlayerError('带背景目录中没有覆盖全部表情的背景编号；不会回退播放原始GIF。')
+            self.index, self.backgrounds = index, backgrounds
+            self.available_background_ids = complete
+            self._index_signature = signature
 
-    def assets(self):
-        self.refresh()
-        with self.lock:
-            return [{'id':key, 'label':visual.stem[len(key):].lstrip('-') or key,
-                     'visual_type':'gif', 'duration_seconds':None, 'scene_index':None,
-                     'visual_name':visual.name, 'visual_mime':'image/gif',
-                     'audio_name':audio.name if audio else None,
-                     'audio_mime':'audio/wav' if audio else None,
-                     'updated_at':visual.stat().st_mtime_ns}
-                    for key,(visual,audio) in sorted(self.index.items())]
+    def _entry(self, key, background_id):
+        if key not in self.index:
+            raise PlayerError('编号不在 sucai_meme/meme_gif 中或已剔除：' + str(key))
+        background_id = self._validate_background(
+            self._background_id if background_id is None else background_id)
+        original, audio = self.index[key]
+        visual = self.backgrounds[(key, background_id)]
+        return original, visual, audio, background_id
 
-    def read(self, key):
-        self.refresh()
+    def assets(self, background_id=None):
         with self.lock:
-            if key not in self.index:
-                raise PlayerError('编号不在 sucai_meme/meme_gif 中或已剔除：' + str(key))
-            visual, audio = self.index[key]
-            visual_blob = self.safe_file(visual).read_bytes()
+            self.refresh()
+            rows = []
+            for key in sorted(self.index):
+                original, visual, audio, selected = self._entry(key, background_id)
+                rows.append({'id':key, 'label':original.stem[len(key):].lstrip('-') or key,
+                             'visual_type':'gif', 'duration_seconds':None, 'scene_index':None,
+                             'visual_name':visual.name, 'visual_mime':'image/gif',
+                             'audio_name':audio.name if audio else None,
+                             'audio_mime':'audio/wav' if audio else None,
+                             'updated_at':visual.stat().st_mtime_ns,
+                             'source_path':str(visual), 'background_id':selected})
+            return rows
+
+    def read(self, key, background_id=None):
+        with self.lock:
+            self.refresh()
+            original, visual, audio, selected = self._entry(key, background_id)
+            visual_blob = self.safe_file(visual, self.background_directory).read_bytes()
             audio_blob = self.safe_file(audio).read_bytes() if audio else None
+            updated_at = visual.stat().st_mtime_ns
         # This runs on the rendering worker, never on the Tk input loop.
         audio_seconds = 0.0
         if audio_blob:
@@ -157,18 +273,18 @@ class DirectoryAssets:
         duration = max(gif_seconds, audio_seconds, .5)
         if duration > 120:
             raise PlayerError('素材时长超过120秒：' + visual.name)
-        return {'id':key, 'label':visual.stem[len(key):].lstrip('-') or key,
+        return {'id':key, 'label':original.stem[len(key):].lstrip('-') or key,
                 'visual_type':'gif','duration_seconds':duration,'scene_index':None,
                 'visual_name':visual.name,'visual_mime':'image/gif','visual_blob':visual_blob,
                 'audio_name':audio.name if audio else None,'audio_mime':'audio/wav' if audio else None,
-                'audio_blob':audio_blob,'updated_at':visual.stat().st_mtime_ns,
-                'source_path':str(visual)}
+                'audio_blob':audio_blob,'updated_at':updated_at,
+                'source_path':str(visual), 'background_id':selected}
 
 
 class DirectoryPlayer(Player):
     """Meme IDs exclusively from the team folder; user imports stay in SQLite."""
-    def __init__(self, root, directory):
-        self.directory_assets = DirectoryAssets(directory)
+    def __init__(self, root, directory, background_directory=None, choice=None):
+        self.directory_assets = DirectoryAssets(directory, background_directory, choice)
         super().__init__(root)
 
     def assets(self):
@@ -180,9 +296,51 @@ class DirectoryPlayer(Player):
         result['items'] = [item for item in result['items'] if item['id'] in allowed]
         return result
 
-    def read_native_asset(self, key):
+    @property
+    def background_id(self):
+        return self.directory_assets.background_id
+
+    @property
+    def conversation_id(self):
+        return self.directory_assets.conversation_id
+
+    def begin_conversation(self, conversation_id):
+        with self.lock:
+            return self.directory_assets.begin_conversation(conversation_id)
+
+    def respond(self, body):
+        if not isinstance(body, dict):
+            return super().respond(body)
+        with self.lock:
+            request_id = body.get('request_id')
+            if isinstance(request_id, str) and request_id in self.requests:
+                # A cached response retains its own conversation/background,
+                # even when a newer conversation is now selected.
+                return super().respond(body)
+            if 'background_id' in body and body['background_id'] is None:
+                raise PlayerError('background_id需要是1到10的整数')
+            if 'conversation_id' in body and 'background_id' not in body:
+                conversation_id = body['conversation_id']
+                if not isinstance(conversation_id, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', conversation_id):
+                    raise PlayerError('conversation_id格式不正确')
+                # Validate before selecting a conversation, so an invalid API
+                # request cannot change the active background.
+                key, text = body.get('meme_id'), body.get('reply_text')
+                if not isinstance(key, str) or key not in {row['id'] for row in self.library()['items']}:
+                    raise PlayerError('meme_id 不在素材库中')
+                if not isinstance(text, str) or not text.strip() or len(text) > 2000:
+                    raise PlayerError('reply_text 需要是1到2000字的文本')
+                if 'request_id' in body and (not isinstance(request_id, str) or
+                        not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', request_id)):
+                    raise PlayerError('request_id格式不正确')
+                body = dict(body, background_id=self.begin_conversation(conversation_id))
+            # An explicit background is an immutable playback snapshot. Replays
+            # of older events must not change the current conversation.
+            return super().respond(body)
+
+    def read_native_asset(self, key, background_id=None):
         if key.startswith('meme-'):
-            return self.directory_assets.read(key)
+            return self.directory_assets.read(key, background_id)
         if not key.startswith('user-'):
             raise PlayerError('未知素材编号：' + str(key))
         with closing(self.connect()) as db:
