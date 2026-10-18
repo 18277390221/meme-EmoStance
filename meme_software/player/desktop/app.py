@@ -232,13 +232,15 @@ def main():
                 status.update(server_connected=self.link.connected, model_ready=self.link.model_ready,
                               model_version=self.link.model_version, pending_requests=len(self.link.waiting),
                               playback_pending=self.link.awaiting_playback is not None,
-                              pending_playback_receipts=len(self.link.playback_receipts))
+                              pending_playback_receipts=len(self.link.playback_receipts),
+                              server_background_revision=getattr(self.link, 'background_revision', 0))
             status.update(asr_running=self.speech.running(), microphone_paused=self.speech.paused,
                           end_silence_seconds=args.end_silence,
                           asr_state=self.speech_state, asr_error=self.speech_error[:300],
                           voice_recovery=self.voice_recovery.status())
             displayed = self.current_event or {}
             status.update(conversation_id=displayed.get('conversation_id'),
+                          background_revision=displayed.get('background_revision', getattr(player, 'background_revision', 0)),
                           background_id=displayed.get('background_id', getattr(player, 'background_id', None)),
                           selected_visual=self.current_visual_name)
             status['music'] = self.music.status()
@@ -422,13 +424,15 @@ def main():
                         self.music.observe_reply(event)
                         # Only local paired media can be selected. Server text
                         # is never interpreted as a path, command or audio URL.
-                        background_id = (player.begin_conversation(event['conversation_id'])
-                                         if hasattr(player, 'begin_conversation') else None)
                         if event['meme_id'] not in {row['id'] for row in player.assets()}:
                             raise ValueError('服务器返回的表情编号不在当前素材来源中或已剔除：' + event['meme_id'])
+                        revision = event.get('background_revision', 0)
+                        background_id = (player.begin_conversation(event['conversation_id'], revision)
+                                         if hasattr(player, 'begin_conversation') else None)
                         player.respond({'meme_id': event['meme_id'], 'reply_text': event['reply_text'],
                                         'request_id': 'server-' + event['id'],
                                         'conversation_id': event['conversation_id'],
+                                        'background_revision': revision,
                                         'background_id': background_id})
                         self.notice = ('已收到新回复，等当前表情与声音完整播完再播放。' if self.turn.media_active
                                        else '已收到小猫回复，正在准备本地表情与配套声音。')
@@ -622,7 +626,7 @@ def main():
             self.fullscreen = enabled
             window.attributes('-fullscreen', enabled)
 
-        def request(self, key, text, background_id=None, conversation_id=None):
+        def request(self, key, text, background_id=None, conversation_id=None, background_revision=None):
             try:
                 body = {'meme_id': key, 'reply_text': text,
                         'request_id': 'desktop-' + uuid.uuid4().hex}
@@ -630,6 +634,8 @@ def main():
                     body['background_id'] = background_id
                 if conversation_id is not None:
                     body['conversation_id'] = conversation_id
+                if background_revision is not None:
+                    body['background_revision'] = background_revision
                 player.respond(body)
             except Exception as error:
                 messagebox.showerror('无法播放', str(error), parent=window)
@@ -637,7 +643,8 @@ def main():
         def replay(self):
             if self.key:
                 snapshot = self.current_event or {}
-                self.request(self.key, self.reply, snapshot.get('background_id'), snapshot.get('conversation_id'))
+                self.request(self.key, self.reply, snapshot.get('background_id'), snapshot.get('conversation_id'),
+                             snapshot.get('background_revision', 0))
 
         def resize(self, event=None):
             if self.resize_job:
@@ -919,8 +926,9 @@ def main():
             window.after(50, finish_close)
 
     desktop = Desktop()
-    from cursor_autohide import CursorAutoHide
-    window.meme_cursor_autohide = CursorAutoHide(window)
+    if Path(__file__).with_name('cursor_autohide.py').is_file():
+        from cursor_autohide import CursorAutoHide
+        window.meme_cursor_autohide = CursorAutoHide(window)
     try:
         window.mainloop()
     except KeyboardInterrupt:

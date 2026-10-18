@@ -33,3 +33,45 @@ __pycache__/
 
 # Trained binary weights exceed GitHub's ordinary Git file limit.
 /model_canshu/**/*.pt
+
+# Raspberry Pi runtime ASR selection stays on the installed device.
+/meme_software/player/desktop/asr-selection.json
+
+# Model weights and generated numeric artifacts are local, including small ones.
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.onnx
+*.tflite
+*.gguf
+*.ggml
+*.npz
+*.npy
+*.egg-info/
+.cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime state, private reports and machine-bound release evidence.
+/model_qwen/backbones/
+/model_qwen/runs/
+/model_qwen/logs/
+/model_qwen/quality/
+/model_qwen/inference_config.json
+/model_information*/runs/
+/model_information_qwen_3.0/inference_config.json
+/model_information_qwen_3.0/inference_release.json
+/model_information_qwen*/dialogue_policy.json
+/model_information_qwen*/dialogue_policy_release.json
+*.pid
+*.lock
+backups/
+.deploy-backups/
+speech-config.json
+asr-selection.json
+
+# Local installers and diagnostic archives.
+/zerotier_chat/*.msi
+/zerotier_chat/*.tar.gz

@@ -103,6 +103,8 @@ class DirectoryAssets:
         self.available_background_ids = ()
         self._background_id = None
         self._conversation_id = None
+        self._background_revision = 0
+        self._background_selections = {}
         self._index_signature = None
         self._choice = choice or random.choice
         self.refresh()
@@ -126,20 +128,41 @@ class DirectoryAssets:
         with self.lock:
             return self._conversation_id
 
-    def _choose_background(self):
-        selected = self._choice(self.available_background_ids)
-        if type(selected) is not int or selected not in self.available_background_ids:
+    @property
+    def background_revision(self):
+        with self.lock:
+            return self._background_revision
+
+    def _choose_background(self, *, exclude_current=False):
+        candidates = self.available_background_ids
+        if exclude_current and len(candidates) > 1:
+            candidates = tuple(value for value in candidates if value != self._background_id)
+        selected = self._choice(candidates)
+        if type(selected) is not int or selected not in candidates:
             raise PlayerError('随机选择的背景编号不可用。')
         return selected
 
-    def begin_conversation(self, conversation_id):
+    def begin_conversation(self, conversation_id, background_revision=0):
         if not isinstance(conversation_id, str) or not conversation_id or len(conversation_id) > 256:
             raise PlayerError('新对话需要有效的conversation_id。')
+        if type(background_revision) is not int or background_revision < 0:
+            raise PlayerError('background_revision需要是非负整数。')
         with self.lock:
             self.refresh()
-            if conversation_id != self._conversation_id:
-                self._background_id = self._choose_background()
+            pair = conversation_id, background_revision
+            if pair in self._background_selections:
+                # Old playback snapshots never move the active revision back.
+                return self._validate_background(self._background_selections[pair])
+            if conversation_id == self._conversation_id and background_revision < self._background_revision:
+                raise PlayerError('对话背景版本已过期，不能倒退。')
+            changed_revision = conversation_id == self._conversation_id and background_revision != self._background_revision
+            if conversation_id != self._conversation_id or changed_revision:
+                self._background_id = self._choose_background(exclude_current=changed_revision)
                 self._conversation_id = conversation_id
+                self._background_revision = background_revision
+                self._background_selections[pair] = self._background_id
+                if len(self._background_selections) > 1024:
+                    del self._background_selections[next(iter(self._background_selections))]
             self._validate_background(self._background_id)
             return self._background_id
 
@@ -304,9 +327,13 @@ class DirectoryPlayer(Player):
     def conversation_id(self):
         return self.directory_assets.conversation_id
 
-    def begin_conversation(self, conversation_id):
+    @property
+    def background_revision(self):
+        return self.directory_assets.background_revision
+
+    def begin_conversation(self, conversation_id, background_revision=0):
         with self.lock:
-            return self.directory_assets.begin_conversation(conversation_id)
+            return self.directory_assets.begin_conversation(conversation_id, background_revision)
 
     def respond(self, body):
         if not isinstance(body, dict):
@@ -333,7 +360,9 @@ class DirectoryPlayer(Player):
                 if 'request_id' in body and (not isinstance(request_id, str) or
                         not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', request_id)):
                     raise PlayerError('request_id格式不正确')
-                body = dict(body, background_id=self.begin_conversation(conversation_id))
+                revision = body.get('background_revision', 0)
+                body = dict(body, background_id=self.begin_conversation(conversation_id, revision),
+                            background_revision=revision)
             # An explicit background is an immutable playback snapshot. Replays
             # of older events must not change the current conversation.
             return super().respond(body)

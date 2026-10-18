@@ -1,6 +1,0 @@
-{
-  "profile": "standard",
-  "model": "../models/sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30",
-  "threads": 2,
-  "silence_rms": 0.008
-}

@@ -25,6 +25,7 @@ from urllib.request import urlopen
 DEFAULT_HOST = "10.205.84.185"
 PLAYER_PORT = 8784
 PLAYER_URL = f"http://127.0.0.1:{PLAYER_PORT}"
+END_SILENCE_SECONDS = .7
 LITE_MODEL = "sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01"
 DISPLAY_KEYS = {
     "DISPLAY", "XAUTHORITY", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS",
@@ -248,7 +249,10 @@ def run(settings: dict) -> dict:
         raise StartupError("8784 接口已有服务，但不属于指定软件；不会启动重复实例或终止其他程序")
     asr = _select_asr_root(software, configured["asr_root"])
     environment = _desktop_environment(processes)
-    command = ["/bin/sh", str(software / "player/desktop/start.sh"), "--stt-root", str(asr)]
+    # Pass the policy after the wrapper's own defaults so even an older
+    # start.sh with --end-silence 0.5 honors the requested 0.7-second wait.
+    command = ["/bin/sh", str(software / "player/desktop/start.sh"), "--stt-root", str(asr),
+               "--end-silence", str(END_SILENCE_SECONDS)]
     python = Path("/usr/bin/python3")
     try:
         check = subprocess.run(

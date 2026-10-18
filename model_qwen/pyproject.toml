@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emostance-qwen"
+version = "0.1.0"
+description = "Qwen3-8B with EmoStance emotion planning and continuous prefix training"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24,<3", "torch>=2.6,<3", "transformers>=4.51,<6", "accelerate>=1,<2", "huggingface-hub>=0.30,<2", "safetensors>=0.4", "sentencepiece>=0.2,<1", "python-igraph>=0.11,<2", "leidenalg>=0.10,<1"]
+
+[project.scripts]
+emostance-qwen = "emostance_qwen.paper_pipeline:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

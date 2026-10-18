@@ -43,3 +43,12 @@ sh player/desktop/start.sh --stt-root /path/to/existing/offline-asr --meme-dir /
 原仓库已有的sleep_screen.py、sleep_demo.py和sleep.gif/sleep.wav保留；当前主程序使用meme_huanxing/screen.py，不新增或替换原媒体。
 
 发布与验证边界见[CURRENT_SOURCE.md](CURRENT_SOURCE.md)，模型说明见[STT_MODEL_VERSION.md](STT_MODEL_VERSION.md)。源码校验：`sha256sum -c SHA256SUMS`。
+
+
+## 2026-10-18 核心源码更新
+
+服务器统一使用最近四个成功问答对的滚动上下文，窗口每滚动五次推进背景版本；无其他重置时，第9、14、19次成功回复切换背景。播放器按 `(conversation_id, background_revision)` 固定每次播放的背景，不因旧缓存回执倒退；详见 [SERVER_PROTOCOL.md](player/desktop/SERVER_PROTOCOL.md)。
+
+待机新增“小猫，睡觉吧”“小猫，睡觉。”“小猫，睡觉了。”“小me，睡觉吧。”；待机中的唤醒支持对应“小猫，起床吧”“小猫，起床。”“小猫，起床了。”“小me，起床吧。”。旧“小me，睡觉/起床”继续可用。待机中的睡觉指令继续待机，清醒时的起床语句交给普通聊天。根目录与播放器内嵌的 `meme_huanxing`、`meme_sing` 源码同步发布。
+
+本次仅更新源码、说明与回归测试，未启动或替换树莓派运行程序。`VALIDATION.json` 中原有设备下载和10项逻辑测试属于此前快照；不代表本次重新测试麦克风、扬声器或真实模型回复。ASR选择文件是本机配置，另行保留，不随核心源码提交。总项目安装、模型产物前提和三种服务器启动方式见 [项目README](../README.md)。

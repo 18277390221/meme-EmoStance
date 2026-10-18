@@ -177,12 +177,15 @@ class Player:
         with self.lock:
             conversation_id = body.get('conversation_id', getattr(self, 'conversation_id', None))
             background_id = body.get('background_id', getattr(self, 'background_id', None))
+            background_revision = body.get('background_revision', getattr(self, 'background_revision', 0))
         if conversation_id is not None and (not isinstance(conversation_id, str) or
                 not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', conversation_id)):
             raise PlayerError('conversation_id格式不正确')
         if background_id is not None and (type(background_id) is not int or not 1 <= background_id <= 10):
             raise PlayerError('background_id需要是1到10的整数')
-        snapshot = {}
+        if type(background_revision) is not int or background_revision < 0:
+            raise PlayerError('background_revision需要是非负整数')
+        snapshot = {'background_revision': background_revision}
         if conversation_id is not None:
             snapshot['conversation_id'] = conversation_id
         if background_id is not None:

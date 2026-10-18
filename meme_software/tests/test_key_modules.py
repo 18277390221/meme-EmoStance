@@ -78,7 +78,7 @@ class KeyModules(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_reply({'meme_id': '../bad', 'reply_text': '合成回复'})
         self.assertEqual(parse_reply({'meme_id': 'meme-0004', 'reply_text': '合成回复'}),
-                         {'meme_id': 'meme-0004', 'reply_text': '合成回复'})
+                         {'meme_id': 'meme-0004', 'reply_text': '合成回复', 'background_revision': 0})
 
     def test_recovery_cancel_invalidates_pending_restart(self):
         now = [0.]

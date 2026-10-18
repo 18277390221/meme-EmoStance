@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from contextlib import redirect_stderr, redirect_stdout
 import errno
+import fcntl
 import hashlib
 import io
 import json
@@ -15,6 +16,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -72,6 +74,8 @@ class LauncherTests(unittest.TestCase):
             patch("model_information.launcher.pi_action", return_value={"state": "started"}),
             patch("model_information.model.load_chat_engine", return_value=engine),
             patch("model_information.server.InferenceServer", return_value=server),
+            patch("model_information.launcher.active_server_status", return_value="ready", create=True),
+            patch("model_information.launcher.follow_dialogue", create=True),
         ]
 
     def test_settings_prefer_original_zerotier_token_without_reading_or_rewriting_it(self):
@@ -167,6 +171,121 @@ except AlreadyRunning:
         with launcher.startup_lock(path):
             pass
 
+    def test_model_lock_probe_never_creates_or_changes_runtime_records(self):
+        path = self.root / "model_information/runs/server.lock"
+        self.assertFalse(launcher.model_lock_held(path))
+        self.assertFalse(path.parent.exists())
+        with launcher.startup_lock(path):
+            before = (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_ino)
+            self.assertTrue(launcher.model_lock_held(path))
+            self.assertEqual(before, (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_ino))
+        self.assertFalse(launcher.model_lock_held(path))
+        self.assertEqual(before, (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_ino))
+
+    def test_runtime_record_identifies_model_endpoint_without_storing_token(self):
+        settings = self.settings()
+        path = self.root / "model_information/runs/server.lock"
+        with launcher.startup_lock(path) as descriptor:
+            launcher.record_runtime(descriptor, settings, {"version": "v1.0.0"})
+            lines = path.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(lines[0], str(os.getpid()))
+            self.assertEqual(json.loads(lines[1]), {"pid": os.getpid(), "host": settings.host,
+                "port": settings.port, "model_dir": str(settings.model_dir), "version": "v1.0.0",
+                "dialogue_log": str(launcher.DEFAULT_LOG_PATH)})
+            self.assertNotIn(TOKEN, "\n".join(lines))
+
+    def test_runtime_configuration_mismatch_is_rejected_before_connecting(self):
+        settings = self.settings()
+        path = self.root / "model_information/runs/server.lock"
+        for key, value in (("host", "192.0.2.200"), ("port", 9123),
+                           ("model_dir", "/different/model"), ("version", "V2.0.0")):
+            with self.subTest(key=key), launcher.startup_lock(path) as descriptor:
+                launcher.record_runtime(descriptor, settings, {"version": "v1.0.0"})
+                lines = path.read_text(encoding="utf-8").splitlines()
+                metadata = json.loads(lines[1])
+                metadata[key] = value
+                path.write_text(lines[0] + "\n" + json.dumps(metadata) + "\n", encoding="utf-8")
+                with patch("model_information.launcher.socket.create_connection") as connect:
+                    with self.assertRaisesRegex(RuntimeError, "其他模型或地址"):
+                        launcher.active_server_status(settings, TOKEN, {"version": "v1.0.0"})
+                connect.assert_not_called()
+
+    def fake_model_connection(self, **overrides):
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        def response_file(mode):
+            hello = json.loads(connection.sendall.call_args.args[0])
+            reply = {"type": "hello_ok", "protocol_version": 2, "model_ready": True,
+                     "session_id": hello["session_id"], "model_version": "v1.0.0", **overrides}
+            return io.BytesIO((json.dumps(reply) + "\n").encode("utf-8"))
+        connection.makefile.side_effect = response_file
+        return connection
+
+    def test_legacy_running_model_is_verified_by_read_only_authenticated_v2_greeting(self):
+        settings = self.settings()
+        connection = self.fake_model_connection()
+        with launcher.startup_lock(self.root / "model_information/runs/server.lock"), patch(
+                "model_information.launcher.socket.create_connection", return_value=connection) as connect:
+            self.assertEqual(launcher.active_server_status(settings, TOKEN, {"version": "v1.0.0"}), "ready")
+        connect.assert_called_once_with((settings.host, settings.port), timeout=3)
+        connection.sendall.assert_called_once()
+        hello = json.loads(connection.sendall.call_args.args[0])
+        self.assertEqual((hello["type"], hello["protocol_version"], hello["token"]), ("hello", 2, TOKEN))
+        self.assertTrue(hello["session_id"])
+        self.assertNotIn("text", hello)
+
+    def test_running_model_greeting_rejects_wrong_version_and_auth_without_echoing_secret(self):
+        settings = self.settings()
+        for overrides, message in (({"model_version": "V2.0.0"}, "版本与本次选择不一致"),
+                ({"type": "error", "code": "auth_failed", "message": TOKEN}, "口令与已有模型服务不一致"),
+                ({"model_ready": False}, "未提供版本 2"),
+                ({"session_id": "wrong-session"}, "未提供版本 2")):
+            with self.subTest(overrides=overrides), patch("model_information.launcher.socket.create_connection",
+                    return_value=self.fake_model_connection(**overrides)):
+                with self.assertRaisesRegex(RuntimeError, message) as error:
+                    launcher.active_server_status(settings, TOKEN, {"version": "v1.0.0"})
+                self.assertNotIn(TOKEN, str(error.exception))
+
+    def test_running_model_connection_refused_reports_starting_without_loading_weights(self):
+        settings = self.settings()
+        with patch("model_information.launcher.socket.create_connection", side_effect=ConnectionRefusedError):
+            self.assertEqual(launcher.active_server_status(settings, TOKEN, {"version": "v1.0.0"}), "starting")
+
+    def test_pi_operation_lock_waits_for_previous_starter_to_finish(self):
+        path = self.root / "model_information/runs/pi-start.lock"
+        waiting, acquired = threading.Event(), threading.Event()
+        errors = []
+        def contender():
+            waiting.set()
+            try:
+                with launcher.pi_operation_lock(path, timeout=1):
+                    acquired.set()
+            except Exception as error:
+                errors.append(error)
+        with launcher.pi_operation_lock(path):
+            thread = threading.Thread(target=contender, daemon=True)
+            thread.start()
+            self.assertTrue(waiting.wait(1))
+            self.assertFalse(acquired.wait(.05))
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(errors, [])
+        self.assertTrue(acquired.is_set())
+
+    def test_busy_pi_operation_times_out_before_a_second_ssh_is_launched(self):
+        settings = self.pi_settings()
+        path = self.root / "model_information/runs/pi-start.lock"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        pi_lock = launcher.pi_operation_lock
+        with path.open("w") as owner:
+            fcntl.flock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with patch("model_information.launcher.pi_operation_lock", side_effect=lambda lock: pi_lock(lock, timeout=.01)):
+                with patch("model_information.launcher.subprocess.run") as run:
+                    with self.assertRaisesRegex(RuntimeError, "另一个命令仍在启动树莓派"):
+                        launcher.pi_action(settings, TOKEN, start=True)
+                run.assert_not_called()
+            self.assertTrue(launcher.model_lock_held(path))
+
     def test_pi_ssh_uses_verified_identity_and_hash_stdin_without_raw_secret(self):
         settings = self.pi_settings()
         response = subprocess.CompletedProcess([], 0, json.dumps({"state": "running"}), "")
@@ -203,6 +322,7 @@ except AlreadyRunning:
         with patch("model_information.launcher.subprocess.run", return_value=subprocess.CompletedProcess([], 0, '{"state":"startable"}', "")) as run:
             self.assertEqual(launcher.pi_action(settings, TOKEN)["state"], "startable")
         self.assertEqual(json.loads(run.call_args.kwargs["input"])["action"], "check")
+        self.assertFalse((self.root / "model_information/runs/pi-start.lock").exists())
 
     def test_pi_helper_failure_timeout_and_invalid_status_fail_clearly(self):
         settings = self.pi_settings()
@@ -235,6 +355,7 @@ except AlreadyRunning:
             mocks[6].assert_not_called()
             mocks[7].assert_not_called()
             server.run.assert_not_awaited()
+            mocks[9].assert_not_called()
             self.assertNotIn(TOKEN, output.getvalue())
             self.assertFalse((self.root / "model_information/runs/server.lock").exists())
         finally:
@@ -246,6 +367,8 @@ except AlreadyRunning:
         mocks = [item.start() for item in patches]
         try:
             events = []
+            mocks[2].side_effect = lambda settings: (events.append("check_local") or (TOKEN, {"version": "v1.0.0"}))
+            mocks[3].side_effect = lambda host, port: events.append("check_port")
             mocks[4].side_effect = lambda network: events.append("prepare")
             mocks[5].side_effect = lambda *args, **kwargs: (events.append("pi_start") or {"state": "started"})
             mocks[6].side_effect = lambda model_dir: (events.append("load_engine") or engine)
@@ -254,20 +377,103 @@ except AlreadyRunning:
             server.run.side_effect = run
             with redirect_stdout(io.StringIO()):
                 self.assertEqual(launcher.main(), 0)
-            self.assertEqual(events, ["prepare", "pi_start", "load_engine", "serve"])
+            self.assertEqual(events, ["check_local", "check_port", "prepare", "pi_start", "load_engine", "serve"])
             mocks[4].assert_called_once_with(settings.network)
             mocks[5].assert_called_once_with(settings, TOKEN, start=True)
+            mocks[8].assert_not_called()
             mocks[6].assert_called_once_with(settings.model_dir)
             mocks[7].assert_called_once_with(engine, TOKEN)
             server.run.assert_awaited_once_with(settings.host, settings.port)
+            mocks[9].assert_not_called()
             with launcher.startup_lock(self.root / "model_information/runs/server.lock"):
                 pass  # Launcher released the lock after server exit.
         finally:
             for item in reversed(patches):
                 item.stop()
 
-    def test_already_running_returns_without_model_load_or_pi_or_network_actions(self):
+    def test_running_server_starts_missing_pi_without_reloading_or_rebinding_model(self):
         settings, engine, server, patches = self.main_mocks()
+        mocks = [item.start() for item in patches]
+        try:
+            events = []
+            mocks[2].side_effect = lambda settings: (events.append("check_local") or (TOKEN, {"version": "v1.0.0"}))
+            mocks[4].side_effect = lambda network: events.append("prepare")
+            mocks[5].side_effect = lambda *args, **kwargs: (events.append("pi_start") or {"state": "started"})
+            output = io.StringIO()
+            path = self.root / "model_information/runs/server.lock"
+            with launcher.startup_lock(path), redirect_stdout(output):
+                self.assertEqual(launcher.main(), 0)
+                with self.assertRaises(launcher.AlreadyRunning):
+                    with launcher.startup_lock(path):
+                        self.fail("Reusing the server must preserve its lifetime lock")
+            self.assertEqual(events, ["check_local", "prepare", "pi_start"])
+            mocks[2].assert_called_once_with(settings)
+            mocks[8].assert_called_once_with(settings, TOKEN, {"version": "v1.0.0"})
+            mocks[3].assert_not_called()
+            mocks[4].assert_called_once_with(settings.network)
+            mocks[5].assert_called_once_with(settings, TOKEN, start=True)
+            for index in (6, 7):
+                mocks[index].assert_not_called()
+            server.run.assert_not_awaited()
+            mocks[9].assert_called_once_with(settings)
+            self.assertNotIn(TOKEN, output.getvalue())
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_running_server_keeps_already_running_pi_and_does_not_load_model_again(self):
+        settings, engine, server, patches = self.main_mocks()
+        mocks = [item.start() for item in patches]
+        try:
+            mocks[5].return_value = {"state": "running"}
+            output = io.StringIO()
+            with launcher.startup_lock(self.root / "model_information/runs/server.lock"), redirect_stdout(output):
+                self.assertEqual(launcher.main(), 0)
+            mocks[2].assert_called_once_with(settings)
+            mocks[3].assert_not_called()
+            mocks[4].assert_called_once_with(settings.network)
+            mocks[5].assert_called_once_with(settings, TOKEN, start=True)
+            mocks[6].assert_not_called()
+            mocks[7].assert_not_called()
+            server.run.assert_not_awaited()
+            mocks[9].assert_called_once_with(settings)
+            self.assertIn("保留当前软件", output.getvalue())
+            self.assertNotIn(TOKEN, output.getvalue())
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_running_server_pi_ssh_failure_is_reported_and_keeps_existing_server_lock(self):
+        settings, engine, server, patches = self.main_mocks()
+        mocks = [item.start() for item in patches]
+        try:
+            mocks[5].side_effect = RuntimeError("fake Pi SSH connection failed")
+            path = self.root / "model_information/runs/server.lock"
+            output, errors = io.StringIO(), io.StringIO()
+            with launcher.startup_lock(path):
+                inode = path.stat().st_ino
+                with redirect_stdout(output), redirect_stderr(errors), self.assertRaises(SystemExit) as error:
+                    launcher.main()
+                self.assertEqual(error.exception.code, 1)
+                self.assertEqual(path.stat().st_ino, inode)
+                with self.assertRaises(launcher.AlreadyRunning):
+                    with launcher.startup_lock(path):
+                        self.fail("Failed Pi startup must not release the existing server lock")
+            self.assertIn("fake Pi SSH connection failed", errors.getvalue())
+            self.assertNotIn("已启动", output.getvalue())
+            self.assertNotIn("已运行，保留当前软件", output.getvalue())
+            mocks[3].assert_not_called()
+            mocks[5].assert_called_once_with(settings, TOKEN, start=True)
+            mocks[6].assert_not_called()
+            mocks[7].assert_not_called()
+            server.run.assert_not_awaited()
+            mocks[9].assert_not_called()
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_server_only_with_running_server_skips_pi_network_and_model_work(self):
+        settings, engine, server, patches = self.main_mocks(("--server-only",))
         mocks = [item.start() for item in patches]
         try:
             with launcher.startup_lock(self.root / "model_information/runs/server.lock"), redirect_stdout(io.StringIO()):
@@ -275,6 +481,173 @@ except AlreadyRunning:
             for index in (2, 3, 4, 5, 6, 7):
                 mocks[index].assert_not_called()
             server.run.assert_not_awaited()
+            mocks[9].assert_called_once_with(settings)
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_no_follow_reuses_server_and_starts_pi_without_waiting_in_console(self):
+        settings, engine, server, patches = self.main_mocks(("--no-follow",))
+        mocks = [item.start() for item in patches]
+        try:
+            path = self.root / "model_information/runs/server.lock"
+            with launcher.startup_lock(path), redirect_stdout(io.StringIO()):
+                self.assertEqual(launcher.main(), 0)
+                with self.assertRaises(launcher.AlreadyRunning):
+                    with launcher.startup_lock(path):
+                        self.fail("Ensure-only startup must preserve the existing server lock")
+            mocks[8].assert_called_once_with(settings, TOKEN, {"version": "v1.0.0"})
+            mocks[4].assert_called_once_with(settings.network)
+            mocks[5].assert_called_once_with(settings, TOKEN, start=True)
+            mocks[9].assert_not_called()
+            for index in (3, 6, 7):
+                mocks[index].assert_not_called()
+            server.run.assert_not_awaited()
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_no_follow_server_only_with_running_server_returns_without_remote_actions(self):
+        settings, engine, server, patches = self.main_mocks(("--server-only", "--no-follow"))
+        mocks = [item.start() for item in patches]
+        try:
+            with launcher.startup_lock(self.root / "model_information/runs/server.lock"), redirect_stdout(io.StringIO()):
+                self.assertEqual(launcher.main(), 0)
+            for index in (2, 3, 4, 5, 6, 7, 8, 9):
+                mocks[index].assert_not_called()
+            server.run.assert_not_awaited()
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_interrupting_reused_console_preserves_server_lock_and_does_not_reload_model(self):
+        settings, engine, server, patches = self.main_mocks()
+        mocks = [item.start() for item in patches]
+        try:
+            mocks[9].side_effect = KeyboardInterrupt
+            path = self.root / "model_information/runs/server.lock"
+            with launcher.startup_lock(path), redirect_stdout(io.StringIO()):
+                before = (path.read_bytes(), path.stat().st_ino)
+                self.assertEqual(launcher.main(), 0)
+                self.assertEqual(before, (path.read_bytes(), path.stat().st_ino))
+                with self.assertRaises(launcher.AlreadyRunning):
+                    with launcher.startup_lock(path):
+                        self.fail("Stopping the console must not stop the existing model server")
+            mocks[9].assert_called_once_with(settings)
+            mocks[5].assert_called_once_with(settings, TOKEN, start=True)
+            for index in (3, 6, 7):
+                mocks[index].assert_not_called()
+            server.run.assert_not_awaited()
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_check_with_running_server_is_read_only_and_does_not_bind_occupied_port(self):
+        settings, engine, server, patches = self.main_mocks(("--check",))
+        mocks = [item.start() for item in patches]
+        try:
+            mocks[5].return_value = {"state": "startable"}
+            path = self.root / "model_information/runs/server.lock"
+            output = io.StringIO()
+            with launcher.startup_lock(path), redirect_stdout(output):
+                inode = path.stat().st_ino
+                self.assertEqual(launcher.main(), 0)
+                self.assertEqual(path.stat().st_ino, inode)
+                with self.assertRaises(launcher.AlreadyRunning):
+                    with launcher.startup_lock(path):
+                        self.fail("Read-only checks must preserve the active server lock")
+            mocks[2].assert_called_once_with(settings)
+            mocks[3].assert_not_called()
+            mocks[4].assert_not_called()
+            mocks[5].assert_called_once_with(settings, TOKEN)
+            mocks[6].assert_not_called()
+            mocks[7].assert_not_called()
+            server.run.assert_not_awaited()
+            mocks[9].assert_not_called()
+            self.assertIn("startable", output.getvalue())
+            self.assertNotIn(TOKEN, output.getvalue())
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_check_server_only_with_running_server_checks_local_without_remote_actions(self):
+        settings, engine, server, patches = self.main_mocks(("--check", "--server-only"))
+        mocks = [item.start() for item in patches]
+        try:
+            with launcher.startup_lock(self.root / "model_information/runs/server.lock"), redirect_stdout(io.StringIO()):
+                self.assertEqual(launcher.main(), 0)
+            mocks[2].assert_called_once_with(settings)
+            for index in (3, 4, 5, 6, 7):
+                mocks[index].assert_not_called()
+            server.run.assert_not_awaited()
+            mocks[9].assert_not_called()
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_running_server_network_prepare_failure_does_not_start_pi_or_reload_model(self):
+        settings, engine, server, patches = self.main_mocks()
+        mocks = [item.start() for item in patches]
+        try:
+            mocks[4].side_effect = RuntimeError("fake network preparation failed")
+            path = self.root / "model_information/runs/server.lock"
+            with launcher.startup_lock(path), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as error:
+                    launcher.main()
+                self.assertEqual(error.exception.code, 1)
+                with self.assertRaises(launcher.AlreadyRunning):
+                    with launcher.startup_lock(path):
+                        self.fail("Failed Pi preparation must preserve the active server lock")
+            mocks[2].assert_called_once_with(settings)
+            mocks[3].assert_not_called()
+            mocks[4].assert_called_once_with(settings.network)
+            for index in (5, 6, 7):
+                mocks[index].assert_not_called()
+            server.run.assert_not_awaited()
+            mocks[9].assert_not_called()
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_running_server_configuration_mismatch_prevents_pi_and_network_changes(self):
+        settings, engine, server, patches = self.main_mocks()
+        mocks = [item.start() for item in patches]
+        try:
+            mocks[8].side_effect = RuntimeError("fake active model version mismatch")
+            output = io.StringIO()
+            with launcher.startup_lock(self.root / "model_information/runs/server.lock"), redirect_stdout(output), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as error:
+                    launcher.main()
+            self.assertEqual(error.exception.code, 1)
+            mocks[2].assert_called_once_with(settings)
+            mocks[8].assert_called_once_with(settings, TOKEN, {"version": "v1.0.0"})
+            for index in (3, 4, 5, 6, 7):
+                mocks[index].assert_not_called()
+            server.run.assert_not_awaited()
+            mocks[9].assert_not_called()
+            self.assertNotIn("已启动", output.getvalue())
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+    def test_running_server_still_loading_can_start_pi_without_claiming_model_ready(self):
+        settings, engine, server, patches = self.main_mocks()
+        mocks = [item.start() for item in patches]
+        try:
+            mocks[8].return_value = "starting"
+            output = io.StringIO()
+            with launcher.startup_lock(self.root / "model_information/runs/server.lock"), redirect_stdout(output):
+                self.assertEqual(launcher.main(), 0)
+            mocks[8].assert_called_once_with(settings, TOKEN, {"version": "v1.0.0"})
+            mocks[3].assert_not_called()
+            mocks[4].assert_called_once_with(settings.network)
+            mocks[5].assert_called_once_with(settings, TOKEN, start=True)
+            mocks[6].assert_not_called()
+            mocks[7].assert_not_called()
+            server.run.assert_not_awaited()
+            mocks[9].assert_called_once_with(settings)
+            self.assertNotIn("已就绪", output.getvalue())
+            self.assertNotIn(TOKEN, output.getvalue())
         finally:
             for item in reversed(patches):
                 item.stop()
@@ -289,6 +662,7 @@ except AlreadyRunning:
             mocks[5].assert_not_called()
             mocks[6].assert_called_once_with(settings.model_dir)
             server.run.assert_awaited_once_with(settings.host, settings.port)
+            mocks[9].assert_not_called()
         finally:
             for item in reversed(patches):
                 item.stop()
@@ -303,6 +677,7 @@ except AlreadyRunning:
             self.assertEqual(error.exception.code, 1)
             for index in (4, 5, 6, 7):
                 mocks[index].assert_not_called()
+            mocks[9].assert_not_called()
         finally:
             for item in reversed(patches):
                 item.stop()

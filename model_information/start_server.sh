@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One command on the server: prepare ZeroTier, keep/start the Pi app, load model.
+# Ensure both ends from the server; reuse a running model and keep/start Pi.
 set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_dir="$(cd -- "$script_dir/.." && pwd)"

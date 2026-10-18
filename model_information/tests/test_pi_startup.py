@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import io
 import json
@@ -142,7 +143,14 @@ class PiStartupTests(unittest.TestCase):
         self.assertEqual(result["pid"], 456)
         args, kwargs = self.popen.call_args
         self.assertEqual(args[0], ["/bin/sh", str(self.software / "player/desktop/start.sh"),
-                                    "--stt-root", str(self.home / "installed-asr")])
+                                    "--stt-root", str(self.home / "installed-asr"),
+                                    "--end-silence", "0.7"])
+        # Older wrappers prepend their 0.5-second default before "$@".
+        # Argparse must see the explicit startup value last and use 0.7.
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--end-silence", type=float, default=1.2)
+        effective, _ = parser.parse_known_args(["--end-silence", "0.5", *args[0][2:]])
+        self.assertEqual(effective.end_silence, .7)
         self.assertTrue(kwargs["start_new_session"])
         self.assertEqual(kwargs["stdin"], subprocess.DEVNULL)
         self.assertEqual(Path(result["log_file"]).stat().st_mode & 0o777, 0o600)

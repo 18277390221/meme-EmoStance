@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+from pathlib import Path
+import tempfile
 import threading
 import unittest
 from unittest.mock import patch
@@ -71,6 +73,11 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.logs = []
         self.log_patch = patch("model_information.server.log", side_effect=self.logs.append)
         self.log_patch.start()
+        journal = tempfile.TemporaryDirectory()
+        self.addCleanup(journal.cleanup)
+        journal_patch = patch("model_information.dialogue_log.DEFAULT_LOG_PATH", Path(journal.name) / "conversation.log")
+        journal_patch.start()
+        self.addCleanup(journal_patch.stop)
 
     async def asyncTearDown(self):
         self.engine.release.set()
@@ -133,6 +140,30 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await client.request("接着说", timeout=1))["reply"], "回答：接着说")
         self.assertEqual([m["content"] for m in self.engine.calls[1]], ["你好 😺", "回答：你好 😺", "接着说"])
         self.assertEqual(client.pending_count, 0)
+
+    async def test_default_server_keeps_sliding_four_pair_legacy_context(self):
+        # Exercise the production constructor, with no injected manager or limit.
+        self.server = InferenceServer(self.engine, TOKEN)
+        self.assertEqual(self.server.manager.max_turns, 4)
+        self.server.manager.clock = self.clock
+        await self.server.start("127.0.0.1", 0)
+        self.port = self.server.addresses[0][1]
+        reader, peer, hello = await self.raw(session_id="continuous-legacy")
+        self.assertNotIn("max_turns", hello)  # Preserve the existing v1 handshake.
+        expected, conversations = [], []
+        for number in range(1, 17):
+            self.clock.set(number)
+            text = f"第{number}轮"
+            result = await self.ask_raw(reader, peer, text, f"long-{number}")
+            self.assertEqual(result["reply"], "回答：" + text)
+            expected.append({"role": "user", "content": text})
+            self.assertEqual(self.engine.calls[-1], expected)
+            expected.append({"role": "assistant", "content": "回答：" + text})
+            expected = expected[-8:]
+            self.assertEqual(self.server.manager.history("continuous-legacy"), expected)
+            conversations.append(self.server.manager._sessions["continuous-legacy"].current.conversation_id)
+        self.assertEqual([len(call) for call in self.engine.calls], [1, 3, 5, 7] + [9] * 12)
+        self.assertEqual(len(set(conversations)), 1)
 
     async def test_ping_keeps_transport_alive_without_extending_exact_10s_dialogue_deadline(self):
         await self.launch()

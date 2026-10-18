@@ -21,19 +21,48 @@ from dataclasses import dataclass, field
 import math
 import time
 from typing import Any, Callable
+import uuid
 
 from .protocol import validate_reply, validate_text
 from .turns import TurnResult
+
+BACKGROUND_ROLL_INTERVAL = 5
 
 
 class BusyError(RuntimeError):
     """The per-session or global accepted-request limit has been reached."""
 
 
+class DialogueFuture(asyncio.Future[dict[str, str]]):
+    """A reply future with conversation metadata outside the model result.
+
+    Read ``conversation_id`` and ``background_revision`` after awaiting this
+    future. Repeated replies may move a queued request to a fresh conversation;
+    sliding context keeps its ID and increments the background revision after
+    every five evicted successful pairs.
+    """
+
+    def __init__(self, conversation_id: str, *, loop: asyncio.AbstractEventLoop) -> None:
+        super().__init__(loop=loop)
+        self._conversation_id = conversation_id
+        self._background_revision = 0
+
+    @property
+    def conversation_id(self) -> str:
+        return self._conversation_id
+
+    @property
+    def background_revision(self) -> int:
+        return self._background_revision
+
+
 @dataclass(eq=False)
 class _Conversation:
+    conversation_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     history: list[dict[str, str]] = field(default_factory=list)
     last_user_at: float | None = None
+    window_slides: int = 0
+    recent_replies: list[str] = field(default_factory=list)
 
 
 @dataclass(eq=False)
@@ -42,6 +71,8 @@ class _Session:
     queue: deque[_Job] = field(default_factory=deque)
     pending: int = 0
     worker: asyncio.Task[None] | None = None
+    idle_held: bool = False
+    hold_until: float | None = None
 
 
 @dataclass(eq=False)
@@ -50,7 +81,7 @@ class _Job:
     session: _Session
     conversation: _Conversation
     text: str
-    future: asyncio.Future[dict[str, str]]
+    future: DialogueFuture
     released: bool = False
 
 
@@ -69,9 +100,12 @@ class DialogueManager:
     ``close()`` cancels all unfinished jobs. A borrowed executor remains owned
     by its caller; the manager shuts down only an executor it creates itself.
 
-    A conversation contains at most ``max_turns`` successfully committed
-    user/reply pairs. Its next inference starts a new conversation, including
-    requests that were already queued before the preceding reply completed.
+    Keep the latest four complete successful user/reply pairs by default.
+    Inference reads that window plus the current user message; success then
+    evicts whole oldest pairs. Sliding keeps the conversation ID and advances
+    its background revision after every five evicted pairs. Idle expiry, two
+    consecutive identical successful replies or an explicit reset still start
+    a fresh conversation. Explicit ``max_turns=None`` keeps unlimited history.
     """
 
     def __init__(
@@ -83,7 +117,7 @@ class DialogueManager:
         max_pending_per_session: int = 8,
         max_pending_total: int = 128,
         executor: Executor | None = None,
-        max_turns: int = 5,
+        max_turns: int | None = 4,
     ) -> None:
         if not callable(getattr(engine, "reply_turn", None)) and not callable(getattr(engine, "reply", None)):
             raise TypeError("engine must provide synchronous reply_turn(messages) or reply(messages)")
@@ -95,9 +129,13 @@ class DialogueManager:
         ):
             raise ValueError("cleanup_interval must be finite and positive or None")
         for name, value in (("max_pending_per_session", max_pending_per_session),
-                            ("max_pending_total", max_pending_total), ("max_turns", max_turns)):
+                            ("max_pending_total", max_pending_total)):
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ValueError(f"{name} must be a positive integer")
+        if max_turns is not None and (
+            isinstance(max_turns, bool) or not isinstance(max_turns, int) or max_turns < 1
+        ):
+            raise ValueError("max_turns must be a positive integer or None")
         if not callable(clock):
             raise TypeError("clock must be callable")
         self.engine = engine
@@ -153,6 +191,16 @@ class DialogueManager:
         return float(value)
 
     def _expire(self, session: _Session, now: float) -> bool:
+        if session.idle_held:
+            if session.hold_until is None or now < session.hold_until:
+                return False
+            # A lost recording/playback callback cannot hold a conversation
+            # forever. Its lease end becomes the start of user waiting time.
+            resumed_at = session.hold_until
+            session.idle_held = False
+            session.hold_until = None
+            if session.current.last_user_at is not None:
+                session.current.last_user_at = resumed_at
         last = session.current.last_user_at
         if last is not None and now - last >= self.idle_timeout:
             session.current = _Conversation()
@@ -160,8 +208,50 @@ class DialogueManager:
         return False
 
     def _forget_empty(self, session_id: str, session: _Session) -> None:
-        if session.pending == 0 and session.current.last_user_at is None and self._sessions.get(session_id) is session:
+        if session.pending == 0 and not session.idle_held and session.current.last_user_at is None and self._sessions.get(session_id) is session:
             del self._sessions[session_id]
+
+    def hold_idle(self, session_id: str, lease_seconds: float | None = None) -> None:
+        """Pause user-idle expiry during speech, inference or reply playback.
+
+        An optional positive lease starts waiting time again at its deadline.
+        ``None`` is for an accepted inference whose owning server task must
+        release the hold. Legacy sessions never call this method and retain
+        their arrival-based deadline.
+        """
+        self._check_loop()
+        if self._closed:
+            raise RuntimeError("DialogueManager is closed")
+        self._validate_session_id(session_id)
+        if lease_seconds is not None and (
+            isinstance(lease_seconds, bool) or not isinstance(lease_seconds, (int, float))
+            or not math.isfinite(lease_seconds) or lease_seconds <= 0
+        ):
+            raise ValueError("lease_seconds must be finite and positive or None")
+        now = self._now()
+        session = self._sessions.setdefault(session_id, _Session())
+        self._expire(session, now)
+        session.idle_held = True
+        session.hold_until = None if lease_seconds is None else now + lease_seconds
+
+    def resume_idle(self, session_id: str) -> bool:
+        """Start the idle deadline now; repeated completion is a no-op."""
+        self._check_loop()
+        self._validate_session_id(session_id)
+        session = self._sessions.get(session_id)
+        if session is None:
+            return False
+        now = self._now()
+        self._expire(session, now)
+        if not session.idle_held:
+            self._forget_empty(session_id, session)
+            return False
+        session.idle_held = False
+        session.hold_until = None
+        if session.current.last_user_at is not None:
+            session.current.last_user_at = now
+        self._forget_empty(session_id, session)
+        return True
 
     @staticmethod
     def _observe_future(future: asyncio.Future[Any]) -> None:
@@ -170,7 +260,7 @@ class DialogueManager:
         if not future.cancelled():
             future.exception()
 
-    def accept(self, session_id: str, text: str) -> asyncio.Future[dict[str, str]]:
+    def accept(self, session_id: str, text: str) -> DialogueFuture:
         """Capture arrival and enqueue immediately, without waiting for the GPU."""
         loop = self._check_loop()
         if self._closed:
@@ -188,7 +278,7 @@ class DialogueManager:
         self._expire(session, received_at)
         conversation = session.current
         conversation.last_user_at = received_at
-        future: asyncio.Future[dict[str, str]] = loop.create_future()
+        future = DialogueFuture(conversation.conversation_id, loop=loop)
         future.add_done_callback(self._observe_future)
         job = _Job(session_id, session, conversation, text, future)
         session.queue.append(job)
@@ -232,11 +322,13 @@ class DialogueManager:
         job.session.pending -= 1
         self._forget_empty(job.session_id, job.session)
 
-    def _rollover_if_full(self, job: _Job) -> None:
-        # Only validated, successful pairs enter history. Admission/pending
-        # counts therefore cannot prematurely consume the conversation limit.
+    def _rollover_if_needed(self, job: _Job) -> None:
+        # Only validated, successful pairs enter history. Cached requests and
+        # failed generations cannot consume turns or introduce repeated replies.
         previous = job.conversation
-        if len(previous.history) < 2 * self.max_turns:
+        repeated = (len(previous.recent_replies) == 2 and
+                    previous.recent_replies[0] == previous.recent_replies[1])
+        if not repeated:
             return
         following = _Conversation(last_user_at=previous.last_user_at)
         job.conversation = following
@@ -253,7 +345,7 @@ class DialogueManager:
             while session.queue and not self._closed:
                 job = session.queue.popleft()
                 try:
-                    self._rollover_if_full(job)
+                    self._rollover_if_needed(job)
                     # Copy only after preceding jobs commit, retaining FIFO
                     # history even if this captured conversation was detached.
                     messages = [dict(message) for message in job.conversation.history]
@@ -267,7 +359,16 @@ class DialogueManager:
                         {"role": "user", "content": turn.user_text},
                         {"role": "assistant", "content": result["reply"]},
                     ))
+                    job.conversation.recent_replies.append(result["reply"])
+                    del job.conversation.recent_replies[:-2]
+                    if self.max_turns is not None:
+                        excess = len(job.conversation.history) // 2 - self.max_turns
+                        if excess > 0:
+                            del job.conversation.history[:2 * excess]
+                            job.conversation.window_slides += excess
                     if not job.future.done():
+                        job.future._conversation_id = job.conversation.conversation_id
+                        job.future._background_revision = job.conversation.window_slides // BACKGROUND_ROLL_INTERVAL
                         job.future.set_result(result)
                 except asyncio.CancelledError:
                     if not job.future.done():
@@ -304,6 +405,8 @@ class DialogueManager:
         if session is None:
             return False
         session.current = _Conversation()
+        session.idle_held = False
+        session.hold_until = None
         self._forget_empty(session_id, session)
         return True
 

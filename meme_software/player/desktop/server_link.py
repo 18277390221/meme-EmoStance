@@ -62,7 +62,14 @@ def parse_reply(message):
     if has_conversation_id and (not isinstance(conversation_id, str) or
             not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', conversation_id)):
         raise ValueError('服务器conversation_id格式不正确。')
-    reply = {'meme_id': key, 'reply_text': text.strip()}
+    revisions = [source['background_revision'] for source in (message, payload)
+                 if 'background_revision' in source]
+    if any(type(value) is not int or value < 0 for value in revisions):
+        raise ValueError('服务器background_revision需要是非负整数。')
+    if len(set(revisions)) > 1:
+        raise ValueError('服务器background_revision字段不一致。')
+    background_revision = revisions[0] if revisions else 0
+    reply = {'meme_id': key, 'reply_text': text.strip(), 'background_revision': background_revision}
     if conversation_id is not None:
         reply['conversation_id'] = conversation_id
     return reply
@@ -80,6 +87,8 @@ class ServerLink:
         self.server_instance_id = None
         self.model_version = None
         self.conversation_id = None
+        self.background_revision = 0
+        self._conversation_revisions = {}
         self.waiting = {}
         self.awaiting_playback = None
         self.playback_receipts = {}
@@ -198,6 +207,8 @@ class ServerLink:
                 self.completed.clear()
                 self.completed_ids.clear()
                 self.conversation_id = None
+                self.background_revision = 0
+                self._conversation_revisions.clear()
             self.server_instance_id = epoch
             self.model_version = hello['model_version']
             pending = list(self.waiting)
@@ -262,12 +273,19 @@ class ServerLink:
                     # stable background for their whole boot, never guess by time.
                     identity = str(self.server_instance_id) + ':' + self.session_id
                     reply['conversation_id'] = 'legacy-' + hashlib.sha256(identity.encode()).hexdigest()
+                with self.lock:
+                    identity, revision = reply['conversation_id'], reply['background_revision']
+                    previous = self._conversation_revisions.get(identity)
+                    if previous is not None and (identity != self.conversation_id or revision < previous):
+                        raise ValueError('服务器回复属于已过期的对话或背景版本，已忽略。')
+                    self.conversation_id, self.background_revision = identity, revision
+                    self._conversation_revisions[identity] = revision
+                    if len(self._conversation_revisions) > 1024:
+                        del self._conversation_revisions[next(iter(self._conversation_revisions))]
             except ValueError as error:
                 self.playback_done(key, failed=True)
                 self.event('reply_error', id=key, message=str(error))
                 return
-            with self.lock:
-                self.conversation_id = reply['conversation_id']
             self.event('reply', id=key, **reply)
         elif kind == 'control_ack':
             if message.get('control') in ('playback_done', 'playback_failed'):

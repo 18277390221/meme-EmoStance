@@ -118,38 +118,233 @@ class DialogueManagerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(manager.history("connection-a")), 6)
         self.assertEqual(manager.pending_count, 0)
 
-    async def test_default_five_successful_turns_reset_before_sixth_inference(self):
-        manager, engine, _ = self.manager()
-        self.assertEqual(manager.max_turns, 5)
-        for number in range(1, 6):
-            await manager.accept("a", f"第{number}轮")
-        self.assertEqual(len(engine.calls[-1]), 9)
-        self.assertEqual(len(manager.history("a")), 10)
-        await manager.accept("a", "第6轮")
-        self.assertEqual(engine.calls[-1], [{"role": "user", "content": "第6轮"}])
-        self.assertEqual([m["content"] for m in manager.history("a")], ["第6轮", "回答：第6轮"])
-        await manager.accept("a", "第7轮")
-        self.assertEqual([m["content"] for m in engine.calls[-1]], ["第6轮", "回答：第6轮", "第7轮"])
+    async def test_explicit_none_keeps_twelve_successful_turns_in_one_conversation(self):
+        manager, engine, clock = self.manager(max_turns=None)
+        self.assertIsNone(manager.max_turns)
+        expected = []
+        conversation_ids = []
+        for number in range(1, 13):
+            clock.set(number)
+            text = f"第{number}轮"
+            expected.append({"role": "user", "content": text})
+            future = manager.accept("a", text)
+            result = await future
+            conversation_ids.append(future.conversation_id)
+            self.assertEqual(set(result), {"reply", "meme_id"})
+            self.assertEqual(engine.calls[-1], expected)
+            expected.append({"role": "assistant", "content": "回答：" + text})
+            self.assertEqual(manager.history("a"), expected)
+        self.assertEqual([len(call) for call in engine.calls], list(range(1, 24, 2)))
+        self.assertEqual(len(set(conversation_ids)), 1)
+        self.assertRegex(conversation_ids[0], r"^[0-9a-f]{32}$")
 
-    async def test_already_queued_requests_cross_turn_limit_into_same_new_conversation(self):
+    async def test_conversation_ids_follow_idle_expiry_and_manual_reset(self):
+        manager, engine, clock = self.manager()
+        first = manager.accept("a", "第一句")
+        await first
+        clock.set(9.999)
+        second = manager.accept("a", "第二句")
+        await second
+        self.assertEqual(first.conversation_id, second.conversation_id)
+        clock.set(20)
+        fresh = manager.accept("a", "空闲后")
+        await fresh
+        self.assertNotEqual(second.conversation_id, fresh.conversation_id)
+        self.assertEqual(engine.calls[-1], [{"role": "user", "content": "空闲后"}])
+        manager.reset("a")
+        reset = manager.accept("a", "重置后")
+        await reset
+        self.assertNotEqual(fresh.conversation_id, reset.conversation_id)
+        self.assertEqual(manager.history("a"), [
+            {"role": "user", "content": "重置后"},
+            {"role": "assistant", "content": "回答：重置后"},
+        ])
+
+    async def test_single_pair_window_keeps_conversation_and_slides_queued_history(self):
+        engine = RecordingEngine(block_text="第一句")
+        manager, _, _ = self.manager(engine, max_turns=1)
+        first = manager.accept("a", "第一句")
+        await wait_event(engine.started)
+        second = manager.accept("a", "第二句")
+        third = manager.accept("a", "第三句")
+        engine.release.set()
+        await asyncio.gather(first, second, third)
+        self.assertEqual(len({future.conversation_id for future in (first, second, third)}), 1)
+        self.assertEqual([len(call) for call in engine.calls], [1, 3, 3])
+        self.assertEqual([m["content"] for m in engine.calls[-1]], ["第二句", "回答：第二句", "第三句"])
+        self.assertEqual([m["content"] for m in manager.history("a")], ["第三句", "回答：第三句"])
+
+    async def test_late_old_reply_keeps_captured_conversation_id_after_reset(self):
+        engine = RecordingEngine(block_text="旧慢问题")
+        manager, _, _ = self.manager(engine)
+        first = manager.accept("a", "旧历史")
+        await first
+        old = manager.accept("a", "旧慢问题")
+        await wait_event(engine.started)
+        manager.reset("a")
+        new = manager.accept("a", "新问题")
+        engine.release.set()
+        await asyncio.gather(old, new)
+        self.assertEqual(first.conversation_id, old.conversation_id)
+        self.assertNotEqual(old.conversation_id, new.conversation_id)
+        self.assertEqual(manager.history("a"), [
+            {"role": "user", "content": "新问题"},
+            {"role": "assistant", "content": "回答：新问题"},
+        ])
+
+    async def test_explicit_none_queued_requests_keep_one_conversation_after_six_turns(self):
+        engine = RecordingEngine(block_text="第6轮")
+        manager, _, _ = self.manager(engine, max_turns=None)
+        futures = []
+        for number in range(1, 6):
+            future = manager.accept("a", f"第{number}轮")
+            await future
+            futures.append(future)
+        sixth = manager.accept("a", "第6轮")
+        await wait_event(engine.started)
+        queued = [manager.accept("a", f"第{number}轮") for number in range(7, 11)]
+        engine.release.set()
+        await asyncio.gather(sixth, *queued)
+        futures.extend((sixth, *queued))
+        self.assertEqual([len(call) for call in engine.calls], list(range(1, 20, 2)))
+        self.assertEqual(len({future.conversation_id for future in futures}), 1)
+        self.assertEqual(len(manager.history("a")), 20)
+        self.assertEqual(manager.pending_count, 0)
+
+    async def test_default_window_slides_queued_requests_in_fifo_without_changing_id(self):
+        engine = RecordingEngine(block_text="第5轮")
+        manager, _, _ = self.manager(engine)
+        futures = []
+        for number in range(1, 5):
+            future = manager.accept("a", f"第{number}轮")
+            await future
+            futures.append(future)
+        for first, end in ((5, 11), (11, 17)):
+            engine.block_text = f"第{first}轮"
+            engine.started.clear()
+            engine.release.clear()
+            blocked = manager.accept("a", f"第{first}轮")
+            await wait_event(engine.started)
+            queued = [manager.accept("a", f"第{number}轮") for number in range(first + 1, end)]
+            engine.release.set()
+            await asyncio.gather(blocked, *queued)
+            futures.extend((blocked, *queued))
+        self.assertEqual(len({future.conversation_id for future in futures}), 1)
+        self.assertEqual([future.background_revision for future in futures], [0] * 8 + [1] * 5 + [2] * 3)
+        self.assertEqual([len(call) for call in engine.calls], [1, 3, 5, 7] + [9] * 12)
+        for number, call in enumerate(engine.calls, 1):
+            expected = []
+            for prior in range(max(1, number - 4), number):
+                expected.extend(({"role": "user", "content": f"第{prior}轮"},
+                                 {"role": "assistant", "content": f"回答：第{prior}轮"}))
+            expected.append({"role": "user", "content": f"第{number}轮"})
+            self.assertEqual(call, expected)
+        self.assertEqual(len(manager.history("a")), 8)
+        self.assertEqual(manager.pending_count, 0)
+
+    async def test_explicit_five_pair_window_keeps_latest_history_and_background_revisions(self):
+        manager, engine, _ = self.manager(max_turns=5)
+        self.assertEqual(manager.max_turns, 5)
+        expected, futures = [], []
+        for number in range(1, 17):
+            text = f"第{number}轮"
+            future = manager.accept("a", text)
+            await future
+            futures.append(future)
+            self.assertEqual(engine.calls[-1], [*expected, {"role": "user", "content": text}])
+            expected.extend(({"role": "user", "content": text},
+                             {"role": "assistant", "content": "回答：" + text}))
+            expected = expected[-10:]
+            self.assertEqual(manager.history("a"), expected)
+            self.assertEqual(future.background_revision, max(0, number - 5) // 5)
+        self.assertEqual(len({future.conversation_id for future in futures}), 1)
+        self.assertEqual([len(call) for call in engine.calls], [1, 3, 5, 7, 9] + [11] * 11)
+        self.assertEqual([m["content"] for m in manager.history("a")][::2],
+                         [f"第{number}轮" for number in range(12, 17)])
+        self.assertEqual(futures[8].background_revision, 0)
+        self.assertEqual(futures[9].background_revision, 1)
+        self.assertEqual(futures[14].background_revision, 2)
+
+    async def test_default_four_pair_window_has_nine_messages_and_five_slide_background_interval(self):
+        manager, engine, _ = self.manager()
+        self.assertEqual(manager.max_turns, 4)
+        expected, futures = [], []
+        for number in range(1, 21):
+            text = f"第{number}轮"
+            future = manager.accept("a", text)
+            await future
+            futures.append(future)
+            self.assertEqual(engine.calls[-1], [*expected, {"role": "user", "content": text}])
+            expected.extend(({"role": "user", "content": text},
+                             {"role": "assistant", "content": "回答：" + text}))
+            expected = expected[-8:]
+            self.assertEqual(manager.history("a"), expected)
+        self.assertEqual(len({future.conversation_id for future in futures}), 1)
+        self.assertEqual([len(call) for call in engine.calls], [1, 3, 5, 7] + [9] * 16)
+        self.assertEqual([future.background_revision for future in futures], [0] * 8 + [1] * 5 + [2] * 5 + [3] * 2)
+        self.assertEqual([m["content"] for m in manager.history("a")][::2],
+                         [f"第{number}轮" for number in range(17, 21)])
+
+    async def test_failed_and_invalid_attempts_do_not_advance_background_revision(self):
+        manager, _, _ = self.manager()
+        futures = []
+        for number in range(1, 9):
+            future = manager.accept("a", f"第{number}轮")
+            await future
+            futures.append(future)
+        before = manager.history("a")
+        for text, error in (("失败", RuntimeError), ("无效结果", ValueError)):
+            with self.assertRaises(error):
+                await manager.accept("a", text)
+            self.assertEqual(manager.history("a"), before)
+            self.assertEqual(manager._sessions["a"].current.window_slides, 4)
+        ninth = manager.accept("a", "第9轮")
+        await ninth
+        self.assertEqual(ninth.background_revision, 1)
+        self.assertEqual(ninth.conversation_id, futures[-1].conversation_id)
+        self.assertEqual(futures[-1].background_revision, 0)
+
+    async def test_idle_and_manual_reset_restart_slide_counter_and_background_revision(self):
+        for reset_kind in ("idle", "manual"):
+            with self.subTest(reset=reset_kind):
+                manager, engine, clock = self.manager()
+                for number in range(1, 11):
+                    old = manager.accept("a", f"第{number}轮")
+                    await old
+                self.assertEqual(old.background_revision, 1)
+                if reset_kind == "idle":
+                    clock.set(10)
+                else:
+                    manager.reset("a")
+                fresh = manager.accept("a", "新问题")
+                await fresh
+                self.assertNotEqual(old.conversation_id, fresh.conversation_id)
+                self.assertEqual(fresh.background_revision, 0)
+                self.assertEqual(manager._sessions["a"].current.window_slides, 0)
+                self.assertEqual(engine.calls[-1], [{"role": "user", "content": "新问题"}])
+
+    async def test_already_queued_requests_slide_two_pair_window_without_reset(self):
         engine = RecordingEngine(block_text="第二轮")
         manager, _, _ = self.manager(engine, max_turns=2)
-        await manager.accept("a", "第一轮")
+        first = manager.accept("a", "第一轮")
+        await first
         second = manager.accept("a", "第二轮")
         await wait_event(engine.started)
         third = manager.accept("a", "第三轮")
         fourth = manager.accept("a", "第四轮")
         engine.release.set()
         await asyncio.gather(second, third, fourth)
-        self.assertEqual([len(call) for call in engine.calls], [1, 3, 1, 3])
-        self.assertEqual([m["content"] for m in engine.calls[-1]], ["第三轮", "回答：第三轮", "第四轮"])
+        self.assertEqual([len(call) for call in engine.calls], [1, 3, 5, 5])
+        self.assertEqual(len({future.conversation_id for future in (first, second, third, fourth)}), 1)
+        self.assertEqual([m["content"] for m in engine.calls[-1]],
+                         ["第二轮", "回答：第二轮", "第三轮", "回答：第三轮", "第四轮"])
         self.assertEqual([m["content"] for m in manager.history("a")],
                          ["第三轮", "回答：第三轮", "第四轮", "回答：第四轮"])
         await manager.accept("a", "第五轮")
-        self.assertEqual(engine.calls[-1], [{"role": "user", "content": "第五轮"}])
+        self.assertEqual(len(engine.calls[-1]), 5)
         self.assertEqual(manager.pending_count, 0)
 
-    async def test_failed_and_invalid_queued_replies_do_not_consume_successful_turn_limit(self):
+    async def test_failed_and_invalid_queued_replies_do_not_slide_window(self):
         manager, engine, _ = self.manager(max_turns=2)
         await manager.accept("a", "第一轮")
         failed = manager.accept("a", "失败")
@@ -161,35 +356,40 @@ class DialogueManagerTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await invalid
         await asyncio.gather(second, third)
-        self.assertEqual([len(call) for call in engine.calls], [1, 3, 3, 3, 1])
+        self.assertEqual([len(call) for call in engine.calls], [1, 3, 3, 3, 5])
         self.assertEqual([m["content"] for m in engine.calls[-2]], ["第一轮", "回答：第一轮", "第二轮"])
-        self.assertEqual([m["content"] for m in manager.history("a")], ["第三轮", "回答：第三轮"])
+        self.assertEqual([m["content"] for m in manager.history("a")], ["第二轮", "回答：第二轮", "第三轮", "回答：第三轮"])
 
-    async def test_failed_first_attempt_after_rollover_does_not_consume_new_turn(self):
+    async def test_failed_attempt_preserves_full_window_and_slide_counter(self):
         manager, engine, _ = self.manager(max_turns=2)
-        await manager.accept("a", "旧一")
+        first = manager.accept("a", "旧一")
+        await first
         await manager.accept("a", "旧二")
+        before = manager.history("a")
         with self.assertRaisesRegex(RuntimeError, "fake engine failure"):
             await manager.accept("a", "失败")
-        self.assertEqual(manager.history("a"), [])
-        await manager.accept("a", "新一")
-        await manager.accept("a", "新二")
-        self.assertEqual([len(call) for call in engine.calls], [1, 3, 1, 1, 3])
-        self.assertEqual([m["content"] for m in engine.calls[-1]], ["新一", "回答：新一", "新二"])
+        self.assertEqual(manager.history("a"), before)
+        self.assertEqual(manager._sessions["a"].current.window_slides, 0)
+        for text in ("新一", "新二"):
+            future = manager.accept("a", text)
+            await future
+            self.assertEqual(future.conversation_id, first.conversation_id)
+        self.assertEqual([len(call) for call in engine.calls], [1, 3, 5, 5, 5])
+        self.assertEqual(manager._sessions["a"].current.window_slides, 2)
 
-    async def test_turn_limit_is_independent_for_each_session(self):
+    async def test_window_slides_are_independent_for_each_session(self):
         manager, engine, _ = self.manager(max_turns=2)
         await manager.accept("a", "甲一")
         await manager.accept("b", "乙一")
         await manager.accept("a", "甲二")
         await manager.accept("a", "甲三")
-        self.assertEqual(engine.calls[-1], [{"role": "user", "content": "甲三"}])
+        self.assertEqual([m["content"] for m in engine.calls[-1]], ["甲一", "回答：甲一", "甲二", "回答：甲二", "甲三"])
         await manager.accept("b", "乙二")
         self.assertEqual([m["content"] for m in engine.calls[-1]], ["乙一", "回答：乙一", "乙二"])
-        self.assertEqual([m["content"] for m in manager.history("a")], ["甲三", "回答：甲三"])
+        self.assertEqual([m["content"] for m in manager.history("a")], ["甲二", "回答：甲二", "甲三", "回答：甲三"])
         self.assertEqual(len(manager.history("b")), 4)
 
-    async def test_detached_queued_rollover_does_not_revive_history_after_idle_reset(self):
+    async def test_detached_queued_slides_do_not_revive_history_after_idle_reset(self):
         engine = RecordingEngine(block_text="旧二")
         manager, _, clock = self.manager(engine, max_turns=2)
         await manager.accept("a", "旧一")
@@ -200,7 +400,7 @@ class DialogueManagerTests(unittest.IsolatedAsyncioTestCase):
         fresh = manager.accept("a", "空闲后新问题")
         engine.release.set()
         await asyncio.gather(second, third, fresh)
-        self.assertEqual([len(call) for call in engine.calls], [1, 3, 1, 1])
+        self.assertEqual([len(call) for call in engine.calls], [1, 3, 5, 1])
         self.assertEqual(engine.calls[-1], [{"role": "user", "content": "空闲后新问题"}])
         self.assertEqual([m["content"] for m in manager.history("a")],
                          ["空闲后新问题", "回答：空闲后新问题"])
@@ -623,9 +823,76 @@ class DialogueManagerTests(unittest.IsolatedAsyncioTestCase):
     async def test_invalid_settings_are_rejected(self):
         for keyword, value in [("idle_timeout", 0), ("idle_timeout", float("nan")), ("idle_timeout", True),
                                ("cleanup_interval", -1), ("max_pending_per_session", 0), ("max_pending_total", 1.5), ("max_pending_total", True),
-                               ("max_turns", 0), ("max_turns", -1), ("max_turns", 1.5), ("max_turns", True), ("max_turns", None)]:
+                               ("max_turns", 0), ("max_turns", -1), ("max_turns", 1.5), ("max_turns", True), ("max_turns", False)]:
             with self.subTest(keyword=keyword, value=value), self.assertRaises(ValueError):
                 DialogueManager(RecordingEngine(), **{keyword: value})
+
+
+class IdleActivityTests(unittest.IsolatedAsyncioTestCase):
+    """Activity leases supplement, rather than alter, legacy arrival timing."""
+
+    asyncSetUp = DialogueManagerTests.asyncSetUp
+    asyncTearDown = DialogueManagerTests.asyncTearDown
+    manager = DialogueManagerTests.manager
+
+    async def test_first_speech_hold_survives_empty_session_cleanup(self):
+        manager, _, clock = self.manager()
+        manager.hold_idle("a", 30)
+        self.assertEqual(manager.history("a"), [])
+        self.assertIn("a", manager._sessions)
+        clock.set(20)
+        await manager.accept("a", "完整第一句")
+        manager.hold_idle("a")
+        clock.set(1000)
+        self.assertEqual(len(manager.history("a")), 2)
+        self.assertTrue(manager.resume_idle("a"))
+        clock.set(1009)
+        self.assertEqual(len(manager.history("a")), 2)
+        clock.set(1010)
+        self.assertEqual(manager.history("a"), [])
+
+    async def test_late_lease_cleanup_counts_from_deadline_not_cleanup_time(self):
+        manager, _, clock = self.manager()
+        await manager.accept("a", "首句")
+        clock.set(9)
+        manager.hold_idle("a", 30)
+        clock.set(50)  # Lease ended at 39; waiting was already idle for 11s.
+        self.assertFalse(manager.resume_idle("a"))
+        self.assertEqual(manager.history("a"), [])
+
+    async def test_manual_resume_is_idempotent_and_reset_clears_hold(self):
+        manager, _, clock = self.manager()
+        await manager.accept("a", "首句")
+        manager.hold_idle("a")
+        clock.set(100)
+        self.assertTrue(manager.resume_idle("a"))
+        clock.set(109)
+        self.assertFalse(manager.resume_idle("a"))
+        clock.set(110)
+        self.assertEqual(manager.history("a"), [])
+        manager.hold_idle("a")
+        self.assertTrue(manager.reset("a"))
+        self.assertNotIn("a", manager._sessions)
+
+    async def test_hold_after_existing_idle_deadline_starts_new_conversation(self):
+        manager, engine, clock = self.manager()
+        await manager.accept("a", "旧首句")
+        clock.set(10)
+        manager.hold_idle("a", 30)
+        clock.set(25)
+        await manager.accept("a", "新首句")
+        self.assertEqual(engine.calls[-1], [{"role":"user", "content":"新首句"}])
+
+    async def test_invalid_leases_do_not_create_or_extend_session(self):
+        manager, _, clock = self.manager()
+        for lease in (True, False, 0, -1, float("inf"), float("nan"), "30"):
+            with self.subTest(lease=lease), self.assertRaises(ValueError):
+                manager.hold_idle("a", lease)
+        self.assertNotIn("a", manager._sessions)
+        self.assertFalse(manager.resume_idle("missing"))
+        await manager.close()
+        with self.assertRaisesRegex(RuntimeError, "closed"):
+            manager.hold_idle("a", 30)
 
 
 if __name__ == "__main__":

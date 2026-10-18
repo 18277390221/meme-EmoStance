@@ -1,0 +1,13 @@
+{
+  "role_prompt": "prompts/companion_zh.txt",
+  "asr_prompt": "prompts/asr_repair_zh.txt",
+  "asr_enabled": false,
+  "asr_history_messages": 6,
+  "asr_max_new_tokens": 192,
+  "max_prompt_tokens": 4096,
+  "max_reply_tokens": 128,
+  "do_sample": true,
+  "temperature": 0.7,
+  "top_p": 0.8,
+  "no_repeat_ngram_size": 4
+}

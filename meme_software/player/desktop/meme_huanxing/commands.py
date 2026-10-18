@@ -12,7 +12,7 @@ from typing import Literal
 
 
 Command = Literal["sleep", "wake"]
-ADDRESS_ALIASES = ("小meme", "小me", "meme", "小咪", "小米", "小美", "小梅", "小妹")
+ADDRESS_ALIASES = ("小meme", "小me", "meme", "小猫", "小咪", "小米", "小美", "小梅", "小妹")
 
 # Preserve the difference between a direct command and a quoted/questioned
 # command before removing punctuation and spacing for normal ASR variation.
@@ -25,7 +25,7 @@ _BACK_ADDRESS = re.compile(r"^(?P<body>.+?)" + _ADDRESS + r"(?:啊|呀|哦)?$")
 # no arbitrary leading/trailing words are allowed to create a substring match.
 _PREFIX = r"(?:你)?(?:请你|请|麻烦你)?(?:现在|赶紧|快点|快|先)?"
 _SLEEP_BODY = (
-    r"(?:睡觉去(?:吧|啦)?|去睡觉(?:吧|啦)?|睡觉(?:吧|啦|了)"
+    r"(?:睡觉去(?:吧|啦)?|去睡觉(?:吧|啦)?|睡觉(?:吧|啦|了)?"
     r"|该(?:去)?睡觉了|睡吧|去睡吧|休息吧|去休息吧|该休息了"
     r"|进入待机(?:模式)?|待机吧)"
 )
@@ -52,8 +52,8 @@ def _normalize(text: str) -> str:
 def classify_command(text: object) -> Command | None:
     """Return a direct, named sleep/wake command, otherwise ``None``.
 
-    Both name-first commands ("小me，睡觉去吧") and the installed legacy
-    name-last command ("去睡觉吧meme") are supported.  A bare "睡觉吧" is
+    Both name-first commands ("小me，睡觉。") and the installed legacy
+    name-last command ("去睡觉吧meme") are supported.  An unaddressed "睡觉" is
     ordinary speech because it does not identify this player as the addressee.
     """
     if not isinstance(text, str) or not text or _QUOTED_OR_QUESTION.search(text):

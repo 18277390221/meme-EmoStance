@@ -1,0 +1,2 @@
+# Install alongside model_qwen/pyproject.toml dependencies in the Qwen environment.
+pypinyin==0.55.0
